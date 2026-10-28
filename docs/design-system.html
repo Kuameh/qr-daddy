@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Daddy design system</title>
+<style>
+  /* Mirrors docs/DESIGN_SYSTEM.md. Self-contained: Geist and Bricolage are not loaded,
+     so system fonts stand in (the app itself loads the real ones). */
+  :root {
+    --paper:#F7F7F5; --surface:#FFFFFF; --surface-sunken:#FBFBFA; --chip:#F1F1EE;
+    --ink:#111114; --ink-soft:#55555C; --muted:#6B6B72; --line:#E6E6E1; --line-strong:#D9D9D3; --line-dashed:#CFCFC8;
+    --accent:#2B4BFF; --accent-tint:#EEF1FF; --accent-soft:#DDE3FF;
+    --danger:#C8102E; --warning:#B45309; --warning-tint:#FFF4E5;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --display: "Bricolage Grotesque", "Arial Black", ui-sans-serif, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 var(--sans); -webkit-font-smoothing:antialiased; }
+  main { max-width:1040px; margin:0 auto; padding:40px 16px 80px; }
+  h1, h2, h3 { font-family:var(--display); font-weight:800; letter-spacing:-0.03em; margin:0; }
+  h1 { font-size:44px; line-height:1; }
+  h2 { font-size:28px; margin:56px 0 16px; padding-top:24px; border-top:1px solid var(--line); }
+  h3 { font-size:20px; margin:28px 0 12px; }
+  p { color:var(--ink-soft); max-width:680px; }
+  code { font:13px ui-monospace, monospace; background:var(--chip); padding:1px 5px; border-radius:4px; color:var(--ink); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }
+  .swatch { background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; font-size:13px; }
+  .swatch div { height:64px; border-bottom:1px solid var(--line); }
+  .swatch span { display:block; padding:8px 10px 0; font-weight:500; }
+  .swatch small { display:block; padding:0 10px 10px; color:var(--muted); }
+  .row { display:flex; align-items:baseline; gap:24px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .row .meta { width:220px; flex-shrink:0; font-size:13px; color:var(--muted); }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px; }
+  .flex { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .shadow-box { width:120px; height:80px; background:var(--surface); border:3px solid var(--ink); border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .step { display:flex; align-items:center; gap:10px; }
+  .step b { width:28px; height:28px; border-radius:999px; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font:800 14px var(--display); }
+  .step span { font:800 20px/1.2 var(--display); letter-spacing:-0.025em; }
+  .chip { min-height:36px; padding:0 12px; border-radius:999px; border:0; background:var(--chip); font:14px var(--sans); color:var(--ink); }
+  .chip.on { background:var(--ink); color:#fff; }
+  .input { height:46px; width:100%; max-width:360px; border:1px solid var(--line-strong); border-radius:12px; padding:0 14px; font:16px var(--sans); }
+  .tile { width:64px; height:64px; border-radius:12px; border:1px solid var(--line-strong); background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:12px; }
+  .tile.on { border:2px solid var(--ink); }
+  .tile i { width:18px; height:18px; background:var(--ink); }
+  .btn { height:44px; padding:0 18px; border-radius:12px; border:2px solid var(--ink); font:500 14px var(--sans); background:#fff; color:var(--ink); }
+  .btn.primary { background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--ink); }
+  .btn[disabled] { opacity:.4; box-shadow:none; }
+  .badge { border:1px dashed var(--warning); color:var(--warning); border-radius:999px; padding:1px 6px; font:500 10px/16px var(--sans); text-transform:uppercase; letter-spacing:.05em; }
+  .bars { display:flex; gap:6px; height:48px; align-items:flex-end; width:260px; }
+  .bars div { flex:1; border-radius:4px; background:var(--accent-soft); }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  td, th { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  @media (max-width: 640px) { .row { flex-direction:column; gap:4px; } .row .meta { width:auto; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.0</span></h1>
+  <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>.</p>
+
+  <h2>1. Design tokens</h2>
+  <h3>Colour</h3>
+  <div class="grid" id="colours"></div>
+
+  <h3>QR palette</h3>
+  <div class="grid" id="qr"></div>
+
+  <h3>Typography</h3>
+  <div class="panel">
+    <div class="row"><span class="meta">text-display-xl · 80 / 0.94</span><span style="font:800 80px/0.94 var(--display); letter-spacing:-0.0375em">Main-character</span></div>
+    <div class="row"><span class="meta">text-display-lg · 44 / 0.95</span><span style="font:800 44px/0.95 var(--display); letter-spacing:-0.045em">QR codes with energy.</span></div>
+    <div class="row"><span class="meta">text-display-md · 40 / 1</span><span style="font:800 40px/1 var(--display); letter-spacing:-0.0375em">1,284 scans</span></div>
+    <div class="row"><span class="meta">display 24 · card title</span><span style="font:800 24px var(--display); letter-spacing:-0.025em">Print-ready files</span></div>
+    <div class="row"><span class="meta">text-step · 20 / 1.2</span><span style="font:800 20px/1.2 var(--display); letter-spacing:-0.025em">What's it for?</span></div>
+    <div class="row"><span class="meta">text-lg · 18 / 1.5</span><span style="font-size:18px; color:var(--ink-soft)">Free to make. Dots, colours, your logo in the middle.</span></div>
+    <div class="row"><span class="meta">text-base · 16 / 1.5</span><span>Body copy and every input on phones.</span></div>
+    <div class="row"><span class="meta">text-sm · 14</span><span style="font-size:14px">Labels, chips, desktop buttons</span></div>
+    <div class="row"><span class="meta">text-xs · 12</span><span style="font-size:12px">Pattern tile captions</span></div>
+    <div class="row"><span class="meta">text-badge · 10 / 16</span><span class="badge">Dev</span></div>
+  </div>
+
+  <h3>Spacing, radius, shadow</h3>
+  <p>4px scale. Gutter 16px phones / 40px desktop. Radius 12 inputs and buttons, 16 panels, 24 stickers, full chips.</p>
+  <div class="flex">
+    <div class="shadow-box" style="box-shadow:4px 4px 0 var(--ink)">hard-sm · 4</div>
+    <div class="shadow-box" style="box-shadow:6px 6px 0 var(--ink)">hard · 6</div>
+    <div class="shadow-box" style="box-shadow:8px 8px 0 var(--ink)">hard-lg · 8</div>
+  </div>
+
+  <h2>2. Iconography</h2>
+  <p>Phosphor (<code>@phosphor-icons/react</code>), regular weight, 18–24px: List, X, ArrowLeft, UploadSimple, WarningCircle. No other icon set.</p>
+
+  <h2>3. Layout</h2>
+  <table>
+    <tr><th>Breakpoint</th><th>Layout</th></tr>
+    <tr><td>&lt; 768px</td><td>Nav 60px → hero → generator as three steps (preview on top, step buttons pinned to the bottom) → stacked cards</td></tr>
+    <tr><td>≥ 768px</td><td>Nav 72px → hero → generator (controls 440px, preview fills) → three cards</td></tr>
+    <tr><td>≥ 1024px</td><td>Hero sticker collage (520 × 400) appears</td></tr>
+  </table>
+
+  <h2>4. Components</h2>
+  <h3>Generator</h3>
+  <div class="panel" style="display:grid; gap:18px">
+    <div class="step"><b>1</b><span>What's it for?</span></div>
+    <div class="flex"><button class="chip on">Link</button><button class="chip">Wi-Fi</button><button class="chip">Contact</button><button class="chip">SMS</button><button class="chip">Email</button></div>
+    <input class="input" value="kofi-chops.com/menu" aria-label="Link">
+    <div class="step"><b>2</b><span>Make it yours</span></div>
+    <div class="flex">
+      <div class="tile"><i></i>Square</div><div class="tile on"><i style="border-radius:6px"></i>Rounded</div><div class="tile"><i style="border-radius:999px"></i>Dots</div>
+    </div>
+    <div class="flex" id="dots"></div>
+    <div style="display:flex; justify-content:space-between; padding:12px 14px; border:1px dashed var(--line-dashed); border-radius:12px; max-width:360px; font-size:14px"><span>Add your logo</span><span style="color:var(--muted)">PNG, JPG or SVG</span></div>
+  </div>
+
+  <h3>Buttons</h3>
+  <div class="flex"><button class="btn">SVG</button><button class="btn primary">Download PNG</button><button class="btn primary" disabled>Download PNG</button></div>
+
+  <h3>States</h3>
+  <table>
+    <tr><th>State</th><th>What shows</th></tr>
+    <tr><td>Empty</td><td>Ghost code in #E4E4DF + “Paste a link to see your code.”</td></tr>
+    <tr><td>Too long</td><td><span style="color:var(--danger)">●</span> “That's too much to fit in one QR code. Make it shorter.” Downloads disabled.</td></tr>
+    <tr><td>Logo file too big</td><td>“That logo file is too big. Use one under 2 MB.”</td></tr>
+    <tr><td>Colour too light</td><td><span style="display:inline-block;background:var(--warning-tint);padding:6px 10px;border-radius:12px"><span style="color:var(--warning)">●</span> “This colour is too light for some phones to read. Pick a darker one.”</span> Under 3:1 contrast with white. Downloads stay enabled.</td></tr>
+  </table>
+
+  <h3>Dev badge</h3>
+  <div class="flex"><span>Dynamic codes</span><span class="badge">Dev</span></div>
+
+  <h3>Proof chart</h3>
+  <div class="bars" id="bars"></div>
+
+  <h2>5. Micro-interactions</h2>
+  <p>None yet.</p>
+
+  <h2>6. Implementation notes</h2>
+  <p>No hex literals or arbitrary values in components; add a token first. Touch targets 44px, inputs 16px on phones. Error copy says what happened, then what to do.</p>
+
+  <h2>Changelog</h2>
+  <p><b>v1.0 · 2026-10-28</b> First version, from the merge of directions A and B without B's yellow.</p>
+</main>
+<script>
+  const colours = [
+    ["paper","#F7F7F5","Page background"],["surface","#FFFFFF","Panels, inputs, stickers"],["surface-sunken","#FBFBFA","Preview well"],
+    ["chip","#F1F1EE","Unselected chips"],["ink","#111114","Text, selection, hard shadows"],["ink-soft","#55555C","Secondary text"],
+    ["muted","#6B6B72","Captions"],["line","#E6E6E1","Panel borders"],["line-strong","#D9D9D3","Input borders"],
+    ["line-dashed","#CFCFC8","Logo drop zone"],["accent","#2B4BFF","Primary action only"],["accent-tint","#EEF1FF","Dynamic row"],
+    ["accent-soft","#DDE3FF","Chart bars"],["danger","#C8102E","Errors"],["warning","#B45309","Warnings, Dev badge"],["warning-tint","#FFF4E5","Warning callout"]];
+  const qr = [["Ink","#111114"],["Cobalt","#2B4BFF"],["Forest","#0F7B55"],["Clay","#C2410C"],["Slate","#6B6B72"],["Placeholder","#E4E4DF"]];
+  const card = (name, hex, use) => `<div class="swatch"><div style="background:${hex}"></div><span>${name}</span><small>${hex}${use ? " · " + use : ""}</small></div>`;
+  document.getElementById("colours").innerHTML = colours.map(c => card(...c)).join("");
+  document.getElementById("qr").innerHTML = qr.map(c => card(c[0], c[1])).join("");
+  document.getElementById("dots").innerHTML = qr.slice(0, 5).map((c, i) =>
+    `<span style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;${i === 0 ? "border:2px solid var(--ink)" : ""}"><span style="width:26px;height:26px;border-radius:999px;background:${c[1]}"></span></span>`).join("");
+  document.getElementById("bars").innerHTML = [14,22,18,29,25,48,36].map((h, i) => `<div style="height:${h}px;${i === 5 ? "background:var(--accent)" : ""}"></div>`).join("");
+</script>
+</body>
+</html>

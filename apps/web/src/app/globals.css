@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/*
+ * QR Daddy design tokens. docs/DESIGN_SYSTEM.md explains each one; add new values
+ * here (and there) instead of writing literals in components.
+ */
+@theme {
+	/* Surfaces: one warm off-white page, white panels on it. */
+	--color-paper: #F7F7F5;
+	--color-surface: #FFFFFF;
+	--color-surface-sunken: #FBFBFA;
+	--color-chip: #F1F1EE;
+
+	/* Ink and lines. */
+	--color-ink: #111114;
+	--color-ink-soft: #55555C;
+	--color-muted: #6B6B72;
+	--color-line: #E6E6E1;
+	--color-line-strong: #D9D9D3;
+	--color-line-dashed: #CFCFC8;
+
+	/* The one accent: cobalt. Primary action, active step, the dynamic feature. */
+	--color-accent: #2B4BFF;
+	--color-accent-tint: #EEF1FF;
+	--color-accent-soft: #DDE3FF;
+
+	/* Feedback. */
+	--color-danger: #C8102E;
+	--color-warning: #B45309;
+	--color-warning-tint: #FFF4E5;
+
+	/* Type: Geist for everything you read, Bricolage Grotesque for the loud moments. */
+	--font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+	--font-display: var(--font-bricolage), var(--font-geist), sans-serif;
+
+	--text-display-xl: 5rem;
+	--text-display-xl--line-height: 0.94;
+	--text-display-xl--letter-spacing: -0.0375em;
+	--text-display-lg: 2.75rem;
+	--text-display-lg--line-height: 0.95;
+	--text-display-lg--letter-spacing: -0.045em;
+	--text-display-md: 2.5rem;
+	--text-display-md--line-height: 1;
+	--text-display-md--letter-spacing: -0.0375em;
+	--text-badge: 0.625rem;
+	--text-badge--line-height: 1rem;
+	--text-step: 1.25rem;
+	--text-step--line-height: 1.2;
+	--text-step--letter-spacing: -0.025em;
+
+	/* The B-direction signature: a hard ink shadow. Primary actions and stickers only. */
+	--shadow-hard-sm: 4px 4px 0 var(--color-ink);
+	--shadow-hard: 6px 6px 0 var(--color-ink);
+	--shadow-hard-lg: 8px 8px 0 var(--color-ink);
+}
+
+@layer base {
+	html {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		-webkit-font-smoothing: antialiased;
+	}
+	body {
+		font-family: var(--font-sans);
+	}
+}
+
+/* Generated QR SVGs fill whatever box holds them. */
+.qr-svg > svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
