@@ -9,3 +9,8 @@ export const QrSegment = qrcodegen.QrSegment;
 export type QrSegment = qrcodegen.QrSegment;
 export const Ecc = qrcodegen.QrCode.Ecc;
 export type Ecc = qrcodegen.QrCode.Ecc;
+
+export { encode, DataTooLongError } from "./encode";
+export { toSvg, LOGO_SIZES } from "./render/svg";
+export type { Pattern, Logo, LogoSize, SvgOptions } from "./render/svg";
+export * as payloads from "./payloads";
