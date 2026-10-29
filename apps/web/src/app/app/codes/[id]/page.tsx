@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CodeDetail } from "@/components/codes/code-detail";
 import { ScanAnalytics } from "@/components/codes/scan-analytics";
+import { codeName } from "@/components/generator/content";
 import { SiteNav } from "@/components/site-nav";
-import { formatCount, formatDate, prettyUrl } from "@/lib/format";
+import { formatCount, formatDate } from "@/lib/format";
 import { coreDeps } from "@/lib/server/cloudflare";
 import { requireUser } from "@/lib/server/session";
 
@@ -14,8 +15,10 @@ export default async function CodePage({ params }: PageProps<"/app/codes/[id]">)
 	const { id } = await params;
 	const user = await requireUser(`/app/codes/${id}`);
 	const deps = await coreDeps();
-	const [code, summary] = await Promise.all([getCode(deps, user.id, id), scanSummary(deps, user.id, id, { days: 30 })]);
-	if (!code || !summary) notFound();
+	const code = await getCode(deps, user.id, id);
+	if (!code) notFound();
+	// Static codes have no scans, so they skip the summary query.
+	const summary = code.kind === "dynamic" ? await scanSummary(deps, user.id, id, { days: 30 }) : null;
 
 	return (
 		<>
@@ -23,10 +26,10 @@ export default async function CodePage({ params }: PageProps<"/app/codes/[id]">)
 			<main className="mx-auto flex w-full max-w-page flex-col gap-6 px-4 pt-5 pb-16 md:px-10 md:pt-6">
 				<CodeDetail
 					code={code}
-					name={code.title ?? prettyUrl(code.destination)}
+					name={codeName(code)}
 					madeOn={formatDate(code.createdAt)}
-					allTimeScans={formatCount(summary.allTime)}
-					analytics={<ScanAnalytics summary={summary} />}
+					allTimeScans={formatCount(summary?.allTime ?? 0)}
+					analytics={summary && <ScanAnalytics summary={summary} />}
 				/>
 			</main>
 		</>

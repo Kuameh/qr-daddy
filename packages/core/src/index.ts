@@ -1,4 +1,8 @@
-// @qr-daddy/core: dynamic codes, magic-link sign-in and scan analytics on D1 + KV.
+// @qr-daddy/core: saved codes, magic-link sign-in and scan analytics on D1 + KV.
+//
+// A signed-in person's codes come in two kinds, through the same functions: dynamic codes encode
+// a short link (slug in KV) and collect scans; static codes store the exact QR text, have no
+// slug and no scans, and are upserted per user + content so a repeat download finds the same code.
 //
 // Every function takes `Deps` first: `{ db: env.DB, kv: env.LINKS }`. Functions that read or
 // write a user's data take `userId`, which must come from `getSession`, never from request input.
@@ -29,12 +33,17 @@ export {
   deleteCode,
   resolveSlug,
   validateDestination,
+  MAX_TITLE_LENGTH,
   LINK_CACHE_TTL_SECONDS,
   SHORT_LINK_ORIGIN,
   APP_ORIGIN,
 } from "./codes";
 export type {
   Code,
+  DynamicCode,
+  StaticCode,
+  CodeKind,
+  ContentType,
   CodeWithStats,
   CodeInput,
   CodePatch,

@@ -1,7 +1,8 @@
 import type { LogoSize, Pattern } from "@qr-daddy/qr";
 import type { ContentType, Fields } from "./content";
 
-// What the generator holds while a signed-out user goes to sign in for a dynamic code.
+// What the generator holds while a signed-out user goes to sign in (for a dynamic code, or to keep
+// their codes).
 // localStorage rather than sessionStorage: the sign-in link opens from the email app in a
 // new tab, which starts a new session. The draft is dropped once read, and after an hour.
 
@@ -11,6 +12,8 @@ export interface Draft {
 	pattern: Pattern;
 	colour: string;
 	logo: { href: string; size: LogoSize } | null;
+	/** Whether Dynamic was on. Missing in drafts saved before it existed: those were all for Dynamic. */
+	dynamic?: boolean;
 }
 
 const KEY = "qd:draft";

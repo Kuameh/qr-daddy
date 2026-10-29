@@ -3,6 +3,7 @@ import { encode, toSvg } from "@qr-daddy/qr";
 import { listCodes, type CodeWithStats } from "@qr-daddy/core";
 import type { Metadata } from "next";
 import { CodeThumb } from "@/components/codes/code-thumb";
+import { codeName, contentLabel } from "@/components/generator/content";
 import { QrArt } from "@/components/qr-art";
 import { SiteNav } from "@/components/site-nav";
 import { primaryButton } from "@/components/ui/buttons";
@@ -14,14 +15,14 @@ import { requireUser } from "@/lib/server/session";
 
 export const metadata: Metadata = { title: "Your codes · QR Daddy" };
 
-// "New code" opens the generator with Dynamic already on.
-const NEW_CODE_HREF = "/?dynamic=on#create";
+// "New code" opens the generator; every code downloaded while signed in is saved here.
+const NEW_CODE_HREF = "/#create";
 const GHOST_SVG = toSvg(encode("https://q.ashiangmor.com/000000"), { pattern: "dots", foreground: "currentColor", background: "transparent", quietZone: 2 });
 
 const STEPS = [
-	{ title: "Paste your link", body: "Go to Create and paste the page you want people to land on." },
-	{ title: "Turn on Dynamic", body: "It prints as a short q.ashiangmor.com link you can change later." },
-	{ title: "Download and print", body: "Your code shows up here with its scans." },
+	{ title: "Make a code", body: "Go to Create: a link, Wi-Fi, a contact, an SMS or an email." },
+	{ title: "Download it", body: "It's kept here in its style, ready to download again." },
+	{ title: "Turn on Dynamic for links", body: "It prints as a short q.ashiangmor.com link you can change later, and you see its scans." },
 ];
 
 function NewCodeButton({ className = "" }: { className?: string }) {
@@ -41,9 +42,9 @@ function Empty() {
 				</div>
 			</div>
 			<div className="flex flex-1 flex-col gap-5 p-4 md:max-w-150 md:p-10">
-				<h2 className="font-display text-step md:text-2xl">No dynamic codes yet.</h2>
+				<h2 className="font-display text-step md:text-2xl">No codes yet.</h2>
 				<p className="text-base text-ink-soft md:text-lg">
-					A dynamic code prints once and points wherever you say. Change the link later and the poster on the wall keeps working.
+					Every code you download while signed in is kept here, so you can download it again any time.
 				</p>
 				<ol className="flex flex-col gap-4">
 					{STEPS.map((step, i) => (
@@ -62,24 +63,33 @@ function Empty() {
 	);
 }
 
+/**
+ * One saved code. Dynamic: short link, destination, scans. Static: its type in place of the short
+ * link, the link it holds (for Link codes), and "Not dynamic" in the scans column.
+ */
 function Row({ code, now }: { code: CodeWithStats; now: number }) {
-	const name = code.title ?? prettyUrl(code.destination);
-	const lastScanned = timeAgo(code.lastScannedAt, now);
+	const name = codeName(code);
+	const pointsTo = code.contentType === "link" ? prettyUrl(code.destination) : null;
+	const lastScanned = code.kind === "dynamic" ? timeAgo(code.lastScannedAt, now) : null;
 	return (
 		<li className="border-t border-line first:border-t-0">
 			<a href={`/app/codes/${code.id}`} className="flex items-start gap-3 px-4 py-4 transition-colors duration-fast ease-out-quart active:bg-surface-sunken md:items-center md:gap-4 md:px-6">
-				<CodeThumb shortUrl={code.shortUrl} style={code.style} />
+				<CodeThumb text={code.shortUrl ?? code.destination} style={code.style} />
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<span className="text-base font-medium">{name}</span>
-					<span className="truncate text-sm text-ink-soft">{prettyUrl(code.shortUrl)}</span>
-					<span className="truncate text-xs text-ink-soft md:hidden">→ {prettyUrl(code.destination)}</span>
+					<span className="truncate text-sm text-ink-soft">{code.shortUrl ? prettyUrl(code.shortUrl) : contentLabel(code.contentType)}</span>
+					{code.kind === "dynamic" && <span className="truncate text-xs text-ink-soft md:hidden">→ {pointsTo}</span>}
 				</span>
-				<span className="hidden w-86 truncate pr-4 text-sm text-ink-soft md:block">{prettyUrl(code.destination)}</span>
-				<span className="flex shrink-0 flex-col items-end gap-1.5 md:w-56 md:flex-row md:items-center md:gap-9">
-					<span className="font-display text-lg md:w-10">{formatCount(code.scansLast7Days)}</span>
-					<Sparkline days={code.dailyScans} />
-					<span className="text-xs text-ink-soft md:hidden">{lastScanned}</span>
-				</span>
+				<span className="hidden w-86 truncate pr-4 text-sm text-ink-soft md:block">{pointsTo}</span>
+				{code.kind === "dynamic" ? (
+					<span className="flex shrink-0 flex-col items-end gap-1.5 md:w-56 md:flex-row md:items-center md:gap-9">
+						<span className="font-display text-lg md:w-10">{formatCount(code.scansLast7Days)}</span>
+						<Sparkline days={code.dailyScans} />
+						<span className="text-xs text-ink-soft md:hidden">{lastScanned}</span>
+					</span>
+				) : (
+					<span className="hidden w-56 text-sm text-ink-soft md:block">Not dynamic</span>
+				)}
 				<span className="hidden w-40 text-sm text-ink-soft md:block">{lastScanned}</span>
 				<CaretRight size={24} className="hidden shrink-0 text-ink-soft md:block" />
 			</a>
@@ -90,9 +100,10 @@ function Row({ code, now }: { code: CodeWithStats; now: number }) {
 export default async function YourCodes({ searchParams }: PageProps<"/app">) {
 	const user = await requireUser("/app");
 	const codes = await listCodes(await coreDeps(), user.id);
-	const deleted = (await searchParams).deleted === "1";
+	const { deleted } = await searchParams;
 	const now = Date.now();
 	const weekScans = codes.reduce((sum, code) => sum + code.scansLast7Days, 0);
+	const hasDynamic = codes.some((code) => code.kind === "dynamic");
 
 	return (
 		<>
@@ -103,8 +114,8 @@ export default async function YourCodes({ searchParams }: PageProps<"/app">) {
 						<h1 className="font-display text-display-lg">Your codes</h1>
 						<p className="text-sm text-ink-soft">
 							{codes.length === 0
-								? "Dynamic codes you make show up here."
-								: `${codes.length === 1 ? "1 dynamic code" : `${codes.length} dynamic codes`} · ${formatCount(weekScans)} ${weekScans === 1 ? "scan" : "scans"} in the last 7 days`}
+								? "Codes you download show up here."
+								: `${codes.length === 1 ? "1 code" : `${formatCount(codes.length)} codes`}${hasDynamic ? ` · ${formatCount(weekScans)} ${weekScans === 1 ? "scan" : "scans"} in the last 7 days` : ""}`}
 						</p>
 					</div>
 					{codes.length > 0 && <NewCodeButton />}
@@ -125,7 +136,8 @@ export default async function YourCodes({ searchParams }: PageProps<"/app">) {
 					</div>
 				)}
 			</main>
-			{deleted && <Toast clearParam="deleted">Code deleted. Its short link has stopped working.</Toast>}
+			{deleted === "1" && <Toast clearParam="deleted">Code deleted. Its short link has stopped working.</Toast>}
+			{deleted === "static" && <Toast clearParam="deleted">Code deleted. Copies you've already printed keep working.</Toast>}
 		</>
 	);
 }

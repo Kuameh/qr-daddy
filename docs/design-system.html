@@ -138,9 +138,9 @@
 </head>
 <body>
 <main>
-  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.4</span></h1>
+  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.6</span></h1>
   <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>. Designs: Brilliant project <code>qr-daddy</code>, canvases “QR Daddy — Final” and “QR Daddy — Account”.</p>
-  <p><b style="color:var(--ink)">Product rule.</b> Making and downloading a static code never needs an account. Only turning on Dynamic asks for one, and it explains the benefit (change where the code points after printing, see its scans) instead of blocking. Signing in is a benefit, never a gate.</p>
+  <p><b style="color:var(--ink)">Product rule.</b> Making and downloading a static code never needs an account. Only turning on Dynamic asks for one, and it explains the benefit (change where the code points after printing, see its scans) instead of blocking. Signing in is a benefit, never a gate. Signed in, every code downloaded from the generator (static or dynamic) is saved to Your codes in its style; signed out, nothing is saved.</p>
 
   <h2>1. Design tokens</h2>
   <h3>Colour</h3>
@@ -189,6 +189,7 @@
     <tr><td>/sign-in</td><td>One 440px column, 112px under the nav on desktop (28px on phones). Nav: wordmark and “Make a free code” only</td></tr>
     <tr><td>/app</td><td>Title + count line, “New code” right (full width on phones) → one panel with the list, or the empty state</td></tr>
     <tr><td>/app/codes/[id]</td><td>Back link, title, short link + Copy → left 444px (sticker + downloads, Points to, Delete) and right (stats, scans per day, countries + devices). Phones: one column, Delete last</td></tr>
+    <tr><td>/app/codes/[id], static</td><td>Back link, title, “Wi-Fi · made …” → left 444px (sticker + downloads, Delete) and right (What it holds). No short link, Points to or analytics. Phones: sticker, What it holds, Delete last</td></tr>
   </table>
 
   <h2>4. Components</h2>
@@ -216,6 +217,14 @@
     <span style="display:block;border-top:1px solid var(--accent-soft);margin-top:12px;padding-top:12px;color:var(--ink)">Dynamic codes need a free account. You can change where the code points after printing and see how many people scan it. Your code still downloads as a regular one without it.<br><u style="font-weight:500">Sign in with your email →</u></span></span></div>
   <p>The callout shows only when a signed-out user turns it on; the static code stays fully downloadable and the draft survives the sign-in trip. Signed in, the code encodes a short link made on the first download, and step 3 adds “Short link <b style="color:var(--ink)">q.ashiangmor.com/abc123</b> · Edit and see scans →”.</p>
 
+  <h3>Saved note (generator step 3)</h3>
+  <div class="flex" style="flex-direction:column; align-items:flex-start; gap:8px">
+    <span style="color:var(--ink-soft)">✓ Saved to <u style="color:var(--ink);font-weight:500">Your codes</u></span>
+    <span style="color:var(--danger)">ⓘ Your code downloaded, but it isn't saved to Your codes. We couldn't reach QR Daddy. Check your internet connection and try again.</span>
+    <span style="color:var(--ink-soft)"><u style="color:var(--ink);font-weight:500">Sign in</u> to keep your codes in one place.</span>
+  </div>
+  <p>Signed in, the first download of a static code saves it to Your codes alongside the file (the download never waits), then step 3 shows “Saved to Your codes” (desktop bar and phone step 3). If saving fails the file still downloads and the danger line says so. Signed out, one quiet benefit line instead, hidden while the Dynamic callout already offers sign-in.</p>
+
   <h3>Account menu</h3>
   <div class="flex" style="align-items:flex-start; gap:24px">
     <div style="display:grid; gap:8px; justify-items:end">
@@ -242,7 +251,7 @@
       <div class="sheet" id="sheet"><h4>Delete this code?</h4><span style="color:var(--ink-soft)">It stops working straight away. You can't undo this.</span>
         <button class="btn danger" style="width:100%">Delete code</button><button class="btn" style="width:100%">Keep it</button></div></div>
   </div>
-  <p>Native <code>&lt;dialog&gt;</code> (focus trap, Escape, top layer); backdrop click closes. Desktop centred 440px; phones a full-width bottom sheet with Delete first.</p>
+  <p>Native <code>&lt;dialog&gt;</code> (focus trap, Escape, top layer); backdrop click closes. Desktop centred 440px; phones a full-width bottom sheet with Delete first. Static codes never mention scans: “<b>Name</b> is removed from Your codes. Copies you've already printed or shared keep working, because what it holds is in the code itself. You can't undo this.”</p>
 
   <h3>Toast, saved, copied</h3>
   <div class="flex" style="gap:24px">
@@ -250,7 +259,7 @@
     <span class="saved" id="saved">✓ Saved. Scans now open the new link.</span>
     <button class="copy">⧉ Copy</button><button class="copy">✓ Copied</button>
   </div>
-  <p>Toast: bottom-centre ink pill, <code>role="status"</code>, gone after 4 seconds. Editing Points to shows Save + Cancel + “Was kofi-chops.com/menu”. Copied lasts 2 seconds.</p>
+  <p>Toast: bottom-centre ink pill, <code>role="status"</code>, gone after 4 seconds. After deleting a static code: “Code deleted. Copies you've already printed keep working.” Editing Points to shows Save + Cancel + “Was kofi-chops.com/menu”. Copied lasts 2 seconds.</p>
 
   <h3>Sign-in states</h3>
   <table>
@@ -266,8 +275,18 @@
     <div class="listrow" style="color:var(--ink-soft);font-size:12px"><span style="flex:1;padding-left:64px">Code</span><span style="width:200px">Points to</span><span style="width:120px">Scans, last 7 days</span><span style="width:90px">Last scanned</span></div>
     <div class="listrow"><span class="thumb"><i></i></span><span style="flex:1"><b style="font-weight:500">Kofi's Chop Bar menu</b><br><span style="color:var(--ink-soft)">q.ashiangmor.com/d4dy</span></span><span style="width:200px;color:var(--ink-soft)">kofi-chops.com/menu</span><span style="width:120px;display:flex;gap:16px;align-items:center"><b style="font:800 18px var(--display)">412</b><span class="spark" id="spark1"></span></span><span style="width:90px;color:var(--ink-soft)">2 min ago</span></div>
     <div class="listrow"><span class="thumb"><i></i></span><span style="flex:1"><b style="font-weight:500">Christmas catering form</b><br><span style="color:var(--ink-soft)">q.ashiangmor.com/x8cc</span></span><span style="width:200px;color:var(--ink-soft)">forms.gle/kofi-xmas</span><span style="width:120px;display:flex;gap:16px;align-items:center"><b style="font:800 18px var(--display)">0</b><span class="spark none" id="spark2"></span></span><span style="width:90px;color:var(--ink-soft)">Not yet</span></div>
+    <div class="listrow"><span class="thumb"><i></i></span><span style="flex:1"><b style="font-weight:500">Kofi Chop Bar</b><br><span style="color:var(--ink-soft)">Wi-Fi</span></span><span style="width:200px;color:var(--ink-soft)"></span><span style="width:120px;color:var(--ink-soft)">Not dynamic</span><span style="width:90px;color:var(--ink-soft)"></span></div>
   </div>
-  <p>Thumbnail: a real render of the code in its saved style on a white face. Phones stack name, short link and “→ destination” with count, sparkline and last scanned on the right. Empty state: ghost code, “No dynamic codes yet.”, three numbered steps and “New code”.</p>
+  <p>Thumbnail: a real render of the code in its saved style on a white face. Phones stack name, short link and “→ destination” with count, sparkline and last scanned on the right. Static rows: the type label (Link / Wi-Fi / Contact / SMS / Email) in place of the short link, the link under Points to for Link codes only, “Not dynamic” in the scans column. Count line: “8 codes · 903 scans in the last 7 days” (scans from dynamic codes; left off when there are none). Empty state: ghost code, “No codes yet.”, “Every code you download while signed in is kept here, so you can download it again any time.”, three numbered steps (Make a code · Download it · Turn on Dynamic for links) and “New code”.</p>
+
+  <h3>What it holds (static code detail)</h3>
+  <div class="panel" style="max-width:440px">
+    <h4 style="margin:0 0 6px;font:800 20px/1.2 var(--display);letter-spacing:-0.025em">What it holds</h4>
+    <span style="color:var(--ink-soft)">This is written into the code itself, so it can't change. To hold something else, make a new code.</span>
+    <div style="margin-top:12px"><span style="font-size:12px;color:var(--ink-soft)">Network name</span><br>Kofi Chop Bar</div>
+    <div style="margin-top:12px;display:flex;justify-content:space-between"><span><span style="font-size:12px;color:var(--ink-soft)">Password</span><br>••••••••</span><span style="color:var(--ink-soft)">Show</span></div>
+  </div>
+  <p>Label over value, read back from the QR text: Link; Network name + Password (hidden until Show; “None” when open); Name, Business, Phone, Email; Phone number + Message; Send to, Subject, Message. Read-only.</p>
 
   <h3>Charts</h3>
   <p><b style="color:var(--ink)">Only the busiest day is cobalt.</b> Every other bar is accent-soft. Today carries its count but stays accent-soft. The sparkline follows the same rule; no scans draws dashes.</p>
@@ -343,7 +362,7 @@
   <p>No hex literals or arbitrary values in components; add a token first, with a dark value. Touch targets 44px, inputs 16px on phones. Error copy says what happened, then what to do. Route handlers answer <code>{ message, details? }</code> in plain copy and the client shows both. Chart bar heights and meter widths may be inline styles (data-driven).</p>
 
   <h2>Email</h2>
-  <p>Templates live in <code>emails/</code> and are published in Resend (alias = file name). Email clients ignore CSS variables and Gmail drops box-shadow, so emails write the palette out inline: paper page, white card with a 1px line border, ink headings, ink-soft body, cobalt button and links. 520px max, Bricolage 800 title, Geist body.</p>
+  <p>Emails are built in <code>apps/web/src/emails/</code> and sent by the app through Resend (not Resend templates: their editor drops the &lt;head&gt; that holds dark-mode support). Palette written out inline; a dark palette in the &lt;head&gt; (page #131315, card #1C1C1F, text #EDEDE8, links #8EA0FF) for clients that honour prefers-color-scheme.</p>
   <div style="background:#F7F7F5;border:1px solid var(--line);border-radius:16px;padding:24px;max-width:520px">
     <div style="font:800 20px var(--display);letter-spacing:-1px;margin-bottom:12px">qr daddy.</div>
     <div style="background:#fff;border:1px solid #E6E6E1;border-radius:16px;padding:24px">
@@ -354,6 +373,8 @@
   </div>
 
   <h2>Changelog</h2>
+  <p><b>v1.6 · 2026-10-29</b> Signed in, every downloaded code is saved to Your codes, static ones too: static list rows (type label, “Not dynamic”), count line for every kind, new empty state, step 3 saved note and its failure line, signed-out “Sign in to keep your codes” line, static code detail with What it holds, static delete copy and toast.</p>
+  <p><b>v1.5 · 2026-10-29</b> Emails built in the app with a dark palette; no Resend templates.</p>
   <p><b>v1.4 · 2026-10-29</b> Email section and the sign-in template (emails/sign-in-link.html, Resend alias sign-in-link).</p>
   <p><b>v1.3 · 2026-10-29</b> Content frame: page sections capped at max-w-page (1280px incl. gutters) and centred.</p>
   <p><b>v1.2 · 2026-10-29</b> Account surfaces from “QR Daddy — Account”: sign-in states, Your codes (rows, empty state, sparkline), code detail (stats, scans per day, meters, Points to, copy, downloads), delete dialog / bottom sheet, toast, account menu (dropdown and phone sheet with scrim). New tokens on-danger, scrim, animate-fade-in and the dialog-motion utility; shared primary, secondary, danger and text buttons. Only the busiest day is cobalt. Dynamic toggle is real (Link only); Dev badge left on Pricing and MoMo. Product rule: static codes never need an account.</p>

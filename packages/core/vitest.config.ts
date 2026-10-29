@@ -9,7 +9,8 @@ export default defineConfig(async () => {
       cloudflareTest({
         miniflare: {
           compatibilityDate: "2026-10-19",
-          d1Databases: ["DB"],
+          // MIGRATION_DB starts empty so a test can seed data between migrations.
+          d1Databases: ["DB", "MIGRATION_DB"],
           kvNamespaces: ["LINKS"],
           bindings: { TEST_MIGRATIONS: migrations },
         },

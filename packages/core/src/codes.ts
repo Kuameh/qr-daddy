@@ -1,3 +1,4 @@
+import { DataTooLongError, encode } from "@qr-daddy/qr";
 import { clock, DAY_MS, fail, ok, type Deps, type Failure, type Result } from "./deps";
 import { isSlug, randomSlug } from "./random";
 
@@ -5,15 +6,23 @@ export const SHORT_LINK_ORIGIN = "https://q.ashiangmor.com";
 export const APP_ORIGIN = "https://qr.ashiangmor.com";
 
 const MAX_DESTINATION_LENGTH = 2048;
-const MAX_TITLE_LENGTH = 120;
+/** Roughly what one QR code holds; the generator stops well before this. */
+/** Longest name a code can have. The web app trims generated names to this too. */
+export const MAX_TITLE_LENGTH = 120;
 const MAX_STYLE_LENGTH = 10_000;
 const SLUG_ATTEMPTS = 5;
 
-export interface Code {
+export type CodeKind = "dynamic" | "static";
+/** What a code holds. Dynamic codes are always links. */
+export type ContentType = "link" | "wifi" | "contact" | "sms" | "email";
+const CONTENT_TYPES: readonly ContentType[] = ["link", "wifi", "contact", "sms", "email"];
+
+interface CodeFields {
   id: string;
-  slug: string;
-  /** What the QR code encodes: `https://q.ashiangmor.com/<slug>`. */
-  shortUrl: string;
+  /**
+   * Dynamic: the link the short link sends people to.
+   * Static: the exact text the QR code encodes (a link, a WIFI: string, a vCard…).
+   */
   destination: string;
   title: string | null;
   /** Whatever JSON the app saved; this package doesn't interpret it. */
@@ -22,7 +31,20 @@ export interface Code {
   updatedAt: number;
 }
 
-export interface CodeWithStats extends Code {
+export type DynamicCode = CodeFields & {
+  kind: "dynamic";
+  contentType: "link";
+  slug: string;
+  /** What the QR code encodes: `https://q.ashiangmor.com/<slug>`. */
+  shortUrl: string;
+};
+
+export type StaticCode = CodeFields & { kind: "static"; contentType: ContentType; slug: null; shortUrl: null };
+
+export type Code = DynamicCode | StaticCode;
+
+/** Static codes have no scans, so their counts are always zero. */
+export type CodeWithStats = Code & {
   totalScans: number;
   /** Scans in the 7 days up to now (rolling, not calendar days). */
   scansLast7Days: number;
@@ -30,9 +52,13 @@ export interface CodeWithStats extends Code {
   dailyScans: number[];
   /** Epoch ms of the latest scan, or null when it has never been scanned. */
   lastScannedAt: number | null;
-}
+};
 
 export interface CodeInput {
+  /** Defaults to "dynamic". */
+  kind?: CodeKind;
+  /** Required for static codes; dynamic codes are always "link". */
+  contentType?: ContentType;
   destination: string;
   /** Blank or null means no title. */
   title?: string | null;
@@ -40,10 +66,15 @@ export interface CodeInput {
   style?: unknown;
 }
 
-/** Omitted fields are left as they are. */
-export type CodePatch = Partial<CodeInput>;
+/** Omitted fields are left as they are. A static code's destination can't change. */
+export type CodePatch = Partial<Pick<CodeInput, "destination" | "title" | "style">>;
 
-export type CodeInputFailure = "bad_destination" | "title_too_long" | "style_too_large";
+export type CodeInputFailure =
+  | "bad_destination"
+  | "bad_content_type"
+  | "title_too_long"
+  | "style_too_large"
+  | "fixed_content";
 
 /** The KV value stored under each slug. */
 export interface LinkTarget {
@@ -53,7 +84,9 @@ export interface LinkTarget {
 
 interface CodeRow {
   id: string;
-  slug: string;
+  kind: CodeKind;
+  content_type: ContentType;
+  slug: string | null;
   destination: string;
   title: string | null;
   style_json: string | null;
@@ -61,19 +94,20 @@ interface CodeRow {
   updated_at: number;
 }
 
-const CODE_COLUMNS = "id, slug, destination, title, style_json, created_at, updated_at";
+const CODE_COLUMNS = "id, kind, content_type, slug, destination, title, style_json, created_at, updated_at";
 
 function toCode(row: CodeRow): Code {
-  return {
+  const fields: CodeFields = {
     id: row.id,
-    slug: row.slug,
-    shortUrl: `${SHORT_LINK_ORIGIN}/${row.slug}`,
     destination: row.destination,
     title: row.title,
     style: row.style_json === null ? null : JSON.parse(row.style_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (row.kind === "static") return { ...fields, kind: "static", contentType: row.content_type, slug: null, shortUrl: null };
+  const slug = row.slug!;
+  return { ...fields, kind: "dynamic", contentType: "link", slug, shortUrl: `${SHORT_LINK_ORIGIN}/${slug}` };
 }
 
 /** The trimmed destination when it's an http(s) link of at most 2048 characters. */
@@ -87,6 +121,23 @@ export function validateDestination(destination: string): Result<string, "bad_de
     return fail("bad_destination", "That link doesn't work. Check it starts with https://");
   }
   return ok(trimmed);
+}
+
+/**
+ * A static code's content, stored exactly as the QR code encodes it (no trimming). It must fit in a
+ * QR code at the error correction Your codes renders with, so a saved code can always be drawn.
+ */
+function validateStaticContent(content: string): Result<string, "bad_destination"> {
+  if (!content.trim()) return fail("bad_destination", "There's nothing in this code yet. Add what it should hold.");
+  try {
+    encode(content);
+  } catch (err) {
+    if (err instanceof DataTooLongError) {
+      return fail("bad_destination", "That's too much to fit in one QR code. Make it shorter.");
+    }
+    throw err;
+  }
+  return ok(content);
 }
 
 function validateTitle(title: string | null | undefined): Result<string | null, "title_too_long"> {
@@ -106,15 +157,30 @@ function serializeStyle(style: unknown): Result<string | null, "style_too_large"
 }
 
 /**
- * Creates a dynamic code with a fresh 6-character slug and publishes it to KV so it scans straight away.
- * `userId` must come from the session.
+ * Saves a code for the user. `userId` must come from the session.
+ *
+ * Dynamic (the default): gets a fresh 6-character slug and is published to KV so it scans straight away.
+ * Static: stores the exact QR text, with no slug and nothing in KV. Saving the same content again
+ * returns the user's existing code with the new style (an upsert on the partial unique index
+ * `codes_user_static_destination`), so repeat downloads never add a second row.
  */
+export function createCode(
+  deps: Deps,
+  userId: string,
+  input: CodeInput & { kind?: "dynamic" },
+): Promise<Result<DynamicCode, CodeInputFailure>>;
+export function createCode(deps: Deps, userId: string, input: CodeInput): Promise<Result<Code, CodeInputFailure>>;
 export async function createCode(
   deps: Deps,
   userId: string,
   input: CodeInput,
 ): Promise<Result<Code, CodeInputFailure>> {
-  const destination = validateDestination(input.destination);
+  const kind = input.kind ?? "dynamic";
+  const contentType = input.contentType ?? "link";
+  if (!CONTENT_TYPES.includes(contentType) || (kind === "dynamic" && contentType !== "link")) {
+    return fail("bad_content_type", "We couldn't tell what this code holds. Reload the page and try again.");
+  }
+  const destination = kind === "static" ? validateStaticContent(input.destination) : validateDestination(input.destination);
   if (!destination.ok) return destination;
   const title = validateTitle(input.title);
   if (!title.ok) return title;
@@ -123,6 +189,21 @@ export async function createCode(
 
   const now = clock(deps);
   const id = crypto.randomUUID();
+  if (kind === "static") {
+    // A title the user has since changed is kept; the style is the one just downloaded.
+    const row = await deps.db
+      .prepare(
+        `INSERT INTO codes (id, user_id, kind, content_type, slug, destination, title, style_json, created_at, updated_at)
+         VALUES (?, ?, 'static', ?, NULL, ?, ?, ?, ?, ?)
+         ON CONFLICT (user_id, destination) WHERE kind = 'static' AND deleted_at IS NULL
+         DO UPDATE SET style_json = excluded.style_json, title = COALESCE(codes.title, excluded.title), updated_at = excluded.updated_at
+         RETURNING ${CODE_COLUMNS}`,
+      )
+      .bind(id, userId, contentType, destination.value, title.value, style.value, now, now)
+      .first<CodeRow>();
+    return ok(toCode(row!));
+  }
+
   for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
     const slug = (deps.newSlug ?? randomSlug)();
     const row = await deps.db
@@ -140,7 +221,10 @@ export async function createCode(
   throw new Error(`No free slug after ${SLUG_ATTEMPTS} attempts`);
 }
 
-/** Updates the user's code. A new destination is written through to KV so scans follow it at once. */
+/**
+ * Updates the user's code. A new destination is written through to KV so scans follow it at once.
+ * A static code's content is the code itself, so changing its destination fails with `fixed_content`.
+ */
 export async function updateCode(
   deps: Deps,
   userId: string,
@@ -151,7 +235,10 @@ export async function updateCode(
   const values: unknown[] = [];
   if (patch.destination !== undefined) {
     const destination = validateDestination(patch.destination);
-    if (!destination.ok) return destination;
+    if (!destination.ok) {
+      // A static code's content can't change at all; say that rather than "enter a link".
+      return (await getCode(deps, userId, codeId))?.kind === "static" ? fixedContent() : destination;
+    }
     sets.push("destination = ?");
     values.push(destination.value);
   }
@@ -169,21 +256,26 @@ export async function updateCode(
   }
   sets.push("updated_at = ?");
   values.push(clock(deps));
+  const onlyDynamic = patch.destination !== undefined ? " AND kind = 'dynamic'" : "";
 
   const row = await deps.db
     .prepare(
-      `UPDATE codes SET ${sets.join(", ")} WHERE id = ? AND user_id = ? AND deleted_at IS NULL RETURNING ${CODE_COLUMNS}`,
+      `UPDATE codes SET ${sets.join(", ")} WHERE id = ? AND user_id = ? AND deleted_at IS NULL${onlyDynamic} RETURNING ${CODE_COLUMNS}`,
     )
     .bind(...values, codeId, userId)
     .first<CodeRow>();
-  if (!row) return notFound();
-  if (patch.destination !== undefined) {
+  if (!row) {
+    // Nothing changed either way; this read only picks the message.
+    if (onlyDynamic && (await getCode(deps, userId, codeId))?.kind === "static") return fixedContent();
+    return notFound();
+  }
+  if (patch.destination !== undefined && row.slug !== null) {
     await putLink(deps, row.slug, { codeId: row.id, destination: row.destination });
   }
   return ok(toCode(row));
 }
 
-/** The user's live codes, newest first, with scan counts. */
+/** The user's live codes of both kinds, newest first, with scan counts (zero for static codes). */
 export async function listCodes(deps: Deps, userId: string): Promise<CodeWithStats[]> {
   const now = clock(deps);
   const firstDay = now - (now % DAY_MS) - 6 * DAY_MS;
@@ -234,7 +326,8 @@ export async function getCode(deps: Deps, userId: string, codeId: string): Promi
 
 /**
  * Soft-deletes the user's code (its slug is never reused), deletes its scans, and removes the
- * slug from KV, so scans get the "not active" page.
+ * slug from KV, so scans get the "not active" page. A static code has no slug: printed copies
+ * keep working, because the content is in the code itself.
  */
 export async function deleteCode(
   deps: Deps,
@@ -247,10 +340,10 @@ export async function deleteCode(
       "UPDATE codes SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL RETURNING slug",
     )
     .bind(now, now, codeId, userId)
-    .first<{ slug: string }>();
+    .first<{ slug: string | null }>();
   if (!row) return notFound();
   await deps.db.prepare("DELETE FROM scans WHERE code_id = ?").bind(codeId).run();
-  await deps.kv.delete(row.slug);
+  if (row.slug !== null) await deps.kv.delete(row.slug);
   return ok();
 }
 
@@ -280,6 +373,10 @@ export const LINK_CACHE_TTL_SECONDS = 600;
 
 function putLink(deps: Deps, slug: string, target: LinkTarget): Promise<void> {
   return deps.kv.put(slug, JSON.stringify(target), { expirationTtl: LINK_CACHE_TTL_SECONDS });
+}
+
+function fixedContent(): Failure<"fixed_content"> {
+  return fail("fixed_content", "This code holds its content in the pattern itself, so it can't be changed. Make a new code instead.");
 }
 
 function notFound(): Failure<"not_found"> {

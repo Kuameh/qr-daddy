@@ -1,4 +1,4 @@
-# QR Daddy design system · v1.4
+# QR Daddy design system · v1.6
 
 QR Daddy is a calm tool with a loud voice. The working surface (the generator) is
 neutral, precise and quiet, like Linear. Personality lives in a few deliberate places:
@@ -15,7 +15,8 @@ Your codes, code detail; 18 frames).
 type, style, logo and PNG/SVG/PDF download works signed out, with no sign-in prompt in the way.
 The only thing that asks for an account is turning on **Dynamic**, and it explains the benefit
 (change where the code points after printing, see its scans) instead of blocking. Signing in is
-a benefit, never a gate.
+a benefit, never a gate. Signed in, every code downloaded from the generator (static or dynamic) is
+saved to Your codes in its style, so it can be downloaded again; signed out, nothing is saved.
 
 ## 1. Design tokens
 
@@ -144,6 +145,7 @@ Phosphor (`@phosphor-icons/react`, `/dist/ssr` in server components), regular we
 - **Sign in (`/sign-in`):** one 440px column, 112px below the nav on desktop (28px on phones). The nav shows only the wordmark and "Make a free code".
 - **Your codes (`/app`), desktop:** title row (title + count line, "New code" on the right) → one panel holding the list. **Phone:** title, full-width "New code", then the list as stacked rows.
 - **Code detail (`/app/codes/[id]`), desktop:** back link, title, short link + Copy, "Dynamic · made …" on the right → left column 444px (sticker and downloads, Points to, Delete) and right column (stat row, Scans per day, then Top countries and Devices side by side). **Phone:** one column in that order, Delete last.
+- **Static code detail:** back link, title, "Wi-Fi · made …" (type label) → left column 444px (sticker and downloads, Delete) and right column "What it holds". No short link, Points to or analytics. **Phone:** sticker, What it holds, Delete last.
 
 ## 4. Components
 
@@ -172,20 +174,26 @@ Shown only for the Link content type, in an `accent-tint` row: switch (`role="sw
 - **Signed out, turned on:** a callout below a hairline (`accent-soft`) in the same row: "Dynamic codes need a free account. You can change where the code points after printing and see how many people scan it. Your code still downloads as a regular one without it." + "Sign in with your email →" (ink, underlined). The static code stays fully usable. The draft (content, style, logo) is kept in `localStorage` for an hour so it survives the sign-in round trip, which opens in a new tab from the email.
 - **Signed in, on:** the code encodes the short link. It is made on the first download (never on a toggle or keystroke) and reused after; style changes are saved to it after a 600ms pause. Step 3 adds one line: before the first download "Dynamic: your short link is made when you first download." (or "Making your short link…"); after, "Short link **q.ashiangmor.com/abc123**" + "Edit and see scans →".
 
+### Saved note (generator step 3, `use-saved-code.ts`)
+- **Signed in, static code:** the first download saves the code to Your codes alongside the file (the download never waits for it). After it, step 3 (desktop bar and phone step 3) shows `CheckCircle` + "Saved to **Your codes**" (`text-sm ink-soft`, "Your codes" ink, underlined, links to `/app`), fading in with `callout-in`. Nothing shows before the first download or for content not yet downloaded. Style changes after that save to the same code after 600ms, like dynamic codes.
+- **Save failed:** the file still downloads; `danger` line with `WarningCircle`: "Your code downloaded, but it isn't saved to Your codes." + the plain API message.
+- **Signed out:** one quiet line, "**Sign in** to keep your codes in one place." (`text-sm ink-soft`, "Sign in" ink, underlined), never a prompt in the way. Hidden while the Dynamic callout already offers sign-in. The draft survives the trip.
+
 ### Account menu (`components/site-nav.tsx`)
 - **Desktop:** a pill button (32px `chip` circle with the email's initial, the email, `CaretDown`); `bg-chip` while open. Dropdown: 280px `surface` panel, `rounded-2xl`, 1px `line` border, no shadow, right-aligned 8px under the button: "Signed in as" (`text-xs muted`) + email (medium), hairline, Sign out (`SignOut`, form POST to `/auth/sign-out`). Closes on Escape or a press outside (`useDismiss`).
 - **Phone:** the hamburger opens a sheet under the nav: links as 48px rows (current page `bg-chip`, medium), hairline, then the same "Signed in as" + Sign out (or "Sign in" when signed out). The page behind gets the `scrim`; tapping it closes the sheet.
 - **Nav links:** Create, Your codes (signed in). Signed out: "Sign in" + "Get a magic link" (ink button), both to `/sign-in`. Current page: `text-ink font-medium`, `aria-current="page"`.
 
 ### Dialog and bottom sheet (`components/ui/dialog.tsx`)
-Native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer). Desktop: centred, 440px wide, `surface`, `rounded-2xl`, 1px `line` border, 24px padding. Phone: a bottom sheet, full width, top corners rounded, 32px bottom padding. Backdrop: `scrim`; clicking it closes. Delete confirm: title "Delete this code?" (display, `text-step`), body says what stops working and that it can't be undone; buttons Keep it (secondary) + Delete code (danger), right-aligned on desktop, stacked full width on phones with Delete first.
+Native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer). Desktop: centred, 440px wide, `surface`, `rounded-2xl`, 1px `line` border, 24px padding. Phone: a bottom sheet, full width, top corners rounded, 32px bottom padding. Backdrop: `scrim`; clicking it closes. Delete confirm: title "Delete this code?" (display, `text-step`), body says what stops working and that it can't be undone; buttons Keep it (secondary) + Delete code (danger), right-aligned on desktop, stacked full width on phones with Delete first. A static code's body never mentions scans: "**name** is removed from Your codes. Copies you've already printed or shared keep working, because what it holds is in the code itself. You can't undo this."
 
 ### Toast (`components/ui/toast.tsx`)
-Bottom-centre, 24px up: `bg-ink text-surface` pill (`rounded-xl`), `CheckCircle` + one sentence, `role="status"`, gone after 4 seconds. Used after delete: "Code deleted. Its short link has stopped working." The query parameter that asked for it is removed so a reload doesn't repeat it.
+Bottom-centre, 24px up: `bg-ink text-surface` pill (`rounded-xl`), `CheckCircle` + one sentence, `role="status"`, gone after 4 seconds. Used after delete: "Code deleted. Its short link has stopped working." (static codes: "Code deleted. Copies you've already printed keep working.") The query parameter that asked for it is removed so a reload doesn't repeat it.
 
 ### Saved and copied states
 - **Saved (Points to):** `CheckCircle` + "Saved. Scans now open the new link." under the input; Save goes to its disabled look.
 - **Editing:** Save enabled, "Cancel" text button, and "Was kofi-chops.com/menu" (`text-xs`) under them.
+- **Saved to Your codes:** see Saved note above.
 - **Copied:** the Copy chip (`bg-chip`, `rounded-full`) swaps `Copy` → `Check` and "Copy" → "Copied" for 2 seconds; a screen-reader status says "Short link copied".
 
 ### Sign-in states (`/sign-in`)
@@ -199,8 +207,12 @@ Bottom-centre, 24px up: `bg-ink text-surface` pill (`rounded-xl`), `CheckCircle`
 ### List rows (Your codes)
 - **Desktop:** column header (`text-xs ink-soft`): Code · Points to (344px) · Scans, last 7 days (224px) · Last scanned (160px) · chevron. Row: 48px thumbnail (a real render of the code in its saved style on a `sticker` face, `rounded-lg`, 1px `line-strong`), name (medium) over the short link (`text-sm ink-soft`), destination, count (display 18px) + sparkline, last scanned ("2 min ago", "Yesterday", "Not yet"), `CaretRight`. Rows are whole-row links divided by `line`; pressed `bg-surface-sunken`.
 - **Phone:** thumbnail, name, short link, "→ destination" (`text-xs`); count, sparkline and last scanned stacked on the right.
-- **Count line:** "6 dynamic codes · 903 scans in the last 7 days".
-- **Empty state:** one panel: ghost code (`ghost`, dots) on `surface-sunken` on the left (on top on phones), then "No dynamic codes yet.", one line on what a dynamic code is, three numbered steps (same 28px ink circles as the generator) and "New code" (primary, `Plus`). "New code" opens `/?dynamic=on#create`.
+- **Static rows:** same columns. The thumbnail renders the stored QR text in its style; under the name, the **type label** (Link / Wi-Fi / Contact / SMS / Email, `text-sm ink-soft`) takes the short link's place. Points to shows the link for Link codes and stays empty otherwise; the scans column reads "Not dynamic" (`text-sm ink-soft`) and Last scanned is empty. Phones show thumbnail, name and type label only. Names: link → host/path, Wi-Fi → network name, contact → name, SMS → phone, email → address.
+- **Count line:** "8 codes · 903 scans in the last 7 days" (every kind counted; scans come from dynamic codes, and the scans part is left off when there are none).
+- **Empty state:** one panel: ghost code (`ghost`, dots) on `surface-sunken` on the left (on top on phones), then "No codes yet.", "Every code you download while signed in is kept here, so you can download it again any time.", three numbered steps (Make a code · Download it · Turn on Dynamic for links; same 28px ink circles as the generator) and "New code" (primary, `Plus`). "New code" opens the generator (`/#create`).
+
+### What it holds (static code detail)
+A card like Points to: "What it holds" (display, `text-step`), "This is written into the code itself, so it can't change. To hold something else, make a new code.", then label (`text-xs ink-soft`) over value (`text-base`) rows read back from the QR text: Link; Network name + Password (dots with a Show / Hide text button; "None" for open networks); Name, Business, Phone, Email; Phone number + Message; Send to, Subject, Message. Read-only.
 
 ### Charts
 One rule everywhere: **only the busiest day is `accent`; every other bar is `accent-soft`.** Cobalt means "the peak", nothing else.
@@ -295,23 +307,34 @@ animate `transform`/`opacity` (the sticker settle also animates its shadow, one 
 
 ## Email
 
-Templates live in `emails/` and are published in Resend (alias = file name, e.g. `sign-in-link`).
-Email clients ignore CSS variables, `box-shadow` (Gmail) and most layout CSS, so emails are the
-one place hex values are written out, inline, from this palette: `paper` #F7F7F5 page,
-`surface` #FFFFFF card with 1px `line` #E6E6E1 and 16px radius, `ink` #111114 headings,
-`ink-soft` #55555C body, `muted` #6B6B72 small print, `accent` #2B4BFF links and the button.
+Emails are built in `apps/web/src/emails/*.ts` and sent by the app through Resend as HTML plus
+plain text. They are not Resend templates: Resend's editor drops the `<head>`, which holds the
+dark-mode support. Email clients ignore CSS variables, `box-shadow` (Gmail) and most layout CSS,
+so emails are the one place hex values are written out, inline, from this palette.
 
-- Width 520px max, 16px side padding on phones, tables with inline styles.
-- Wordmark "qr daddy." and the title in Bricolage Grotesque 800 (fallback Arial Black); body in Geist (fallback system sans).
-- Primary button: cobalt face, white Geist 500 16px, 2px ink border with 6px right and bottom borders standing in for the hard shadow.
-- Always include the raw link under the button and a plain "didn't ask for this?" line.
-- Light only (`color-scheme: light`); variables are Resend's `{{{NAME}}}`.
+| Role | Light | Dark (`prefers-color-scheme`, Outlook `data-ogsc`) |
+|---|---|---|
+| Page | `paper` #F7F7F5 | #131315 |
+| Card | `surface` #FFFFFF, 1px `line` #E6E6E1 | #1C1C1F, #2C2C30 |
+| Headings, wordmark | `ink` #111114 | #EDEDE8 |
+| Body | `ink-soft` #55555C | #B4B4BB |
+| Small print | `muted` #6B6B72 | #9A9AA2 |
+| Button | `accent` #2B4BFF face, white text, ink border | same face and text, #EDEDE8 border |
+| Links | `accent` #2B4BFF | #8EA0FF (email only: cobalt is too dark to read as text on the dark card) |
+
+- Width 520px max, 16px side padding on phones, tables with inline styles; the dark palette lives in the `<head>` `<style>` as classes with `!important`.
+- `color-scheme: light dark` is declared, so Apple Mail and Outlook use the dark palette instead of inverting the light one. Gmail's app may still recolour; the palette is chosen to survive that.
+- Wordmark and title in Bricolage Grotesque 800 (fallback Arial Black); body in Geist (fallback system sans).
+- Primary button: cobalt face, white Geist 500 16px, 2px border with 6px right and bottom borders standing in for the hard shadow.
+- Always include the raw link under the button, a plain-text part, and a plain "didn't ask for this?" line.
 
 ## Changelog
 
+- **v1.6 · 2026-10-29** Signed in, every downloaded code is saved to Your codes, static ones too. Static list rows (type label, "Not dynamic"), count line for every kind, new empty-state copy, the step 3 saved note and its failure line, the signed-out "Sign in to keep your codes" line, static code detail with "What it holds", and delete copy and toast for static codes.
 - **v1.2 · 2026-10-29** Account surfaces from the "QR Daddy — Account" canvas: sign-in states, Your codes (list rows, empty state, sparkline), code detail (stat row, scans-per-day chart, meters, Points to with saved state, copy chip, downloads), delete dialog / bottom sheet, toast, account menu (desktop dropdown, phone sheet with scrim). New tokens `on-danger`, `scrim`, `animate-fade-in` and the `dialog-motion` utility; shared button styles (primary, secondary, danger, text). Chart rule: only the busiest day is cobalt. The Dynamic toggle is real (Link only, no Dev badge); Dev badge left on Pricing and MoMo. Product rule written down: static codes never need an account.
 
 - **v1.1 · 2026-10-29** Dark mode (system setting) for every token, sticker and `on-accent` tokens, `ghost` replaces the placeholder hex; motion tokens and the first motion pass. PDF download, a secondary button next to SVG on desktop and in the phone step bar; phone bar primary label shortened to "PNG".
 - **v1.0 · 2026-10-28** First version, from the merge of direction A (Workbench) and B (Loud) without B's yellow.
 - **v1.3 · 2026-10-29** Content frame: page sections are capped at `max-w-page` (1280px incl. gutters) and centred, so content no longer runs to the screen edges on wide displays.
 - **v1.4 · 2026-10-29** Email section and the first template, `emails/sign-in-link.html` (Resend alias `sign-in-link`).
+- **v1.5 · 2026-10-29** Emails are built in the app (`apps/web/src/emails/`), not Resend templates, with a dark palette for clients that support it.

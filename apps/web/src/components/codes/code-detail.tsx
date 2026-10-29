@@ -5,6 +5,7 @@ import type { Code } from "@qr-daddy/core";
 import { encode, toSvg } from "@qr-daddy/qr";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { contentLabel, heldFields, type HeldField } from "@/components/generator/content";
 import { inputClass } from "@/components/generator/fields";
 import { QrArt } from "@/components/qr-art";
 import { dangerButton, primaryButton, secondaryButton, textButton } from "@/components/ui/buttons";
@@ -79,15 +80,47 @@ function PointsTo({ codeId, destination }: { codeId: string; destination: string
 	);
 }
 
+/** "What it holds": a static code's content, read back for people. Read-only: it's in the pattern. */
+function WhatItHolds({ fields }: { fields: HeldField[] }) {
+	const [revealed, setRevealed] = useState(false);
+	return (
+		<section className={card} aria-labelledby="what-it-holds">
+			<div className="flex flex-col gap-2">
+				<h2 id="what-it-holds" className="font-display text-step md:text-2xl">What it holds</h2>
+				<p className="text-sm text-ink-soft">This is written into the code itself, so it can't change. To hold something else, make a new code.</p>
+			</div>
+			<dl className="flex flex-col gap-3">
+				{fields.map((field) => (
+					<div key={field.label} className="flex flex-col gap-0.5">
+						<dt className="text-xs text-ink-soft">{field.label}</dt>
+						<dd className="flex items-center justify-between gap-3">
+							{field.secret && !revealed ? (
+								<span className="text-base"><span aria-hidden>••••••••</span><span className="sr-only">Hidden</span></span>
+							) : (
+								<span className="min-w-0 text-base break-words whitespace-pre-line">{field.value}</span>
+							)}
+							{field.secret && (
+								<button type="button" className={textButton} onClick={() => setRevealed(!revealed)}>{revealed ? "Hide" : "Show"}</button>
+							)}
+						</dd>
+					</div>
+				))}
+			</dl>
+		</section>
+	);
+}
+
 /**
- * One dynamic code: its sticker and files, where it points, its scans (`analytics`, rendered on
- * the server) and delete. Phones stack everything in one column, with delete at the very end.
+ * One saved code: its sticker and files, and delete. A dynamic code adds its short link, where it
+ * points and its scans (`analytics`, rendered on the server); a static code shows what it holds.
+ * Phones stack everything in one column, with delete at the very end.
  */
 export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 	code: Code;
 	name: string;
 	madeOn: string;
 	allTimeScans: string;
+	/** Dynamic codes only. */
 	analytics: ReactNode;
 }) {
 	const router = useRouter();
@@ -96,14 +129,16 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 	const [deleting, setDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 
+	const text = code.shortUrl ?? code.destination;
 	const file = useMemo(() => {
-		const qr = encode(code.shortUrl);
+		const qr = encode(text);
 		const options = svgOptions(readStyle(code.style));
 		return { qr, options, preview: toSvg(qr, options), svg: toSvg(qr, { ...options, size: 1024 }) };
-	}, [code.shortUrl, code.style]);
-	const filename = `qr-daddy-${code.slug}`;
+	}, [text, code.style]);
+	const filename = `qr-daddy-${code.slug ?? code.contentType}`;
 
 	async function copy() {
+		if (!code.shortUrl) return;
 		try {
 			await navigator.clipboard.writeText(code.shortUrl);
 			setCopied("copied");
@@ -122,7 +157,7 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 			setDeleteError(getApiErrorText(result));
 			return;
 		}
-		router.push("/app?deleted=1");
+		router.push(`/app?deleted=${code.kind === "static" ? "static" : "1"}`);
 		router.refresh();
 	}
 
@@ -138,18 +173,22 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 			<div className="flex flex-col gap-3">
 				<a href="/app" className="flex h-11 items-center gap-2 self-start text-sm text-ink-soft"><ArrowLeft size={18} /> Your codes</a>
 				<h1 className="font-display text-display-lg break-words">{name}</h1>
-				<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-					<div className="flex items-center gap-3">
-						<span className="text-base font-medium">{prettyUrl(code.shortUrl)}</span>
-						<button type="button" onClick={copy}
-							className="flex h-11 items-center gap-1.5 rounded-full bg-chip px-3.5 text-sm font-medium transition-colors duration-fast ease-out-quart md:h-9">
-							{copied === "copied" ? <Check size={16} /> : <Copy size={16} />}
-							{copied === "copied" ? "Copied" : "Copy"}
-						</button>
-						<span role="status" className="sr-only">{copied === "copied" ? "Short link copied" : ""}</span>
+				{code.shortUrl ? (
+					<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+						<div className="flex items-center gap-3">
+							<span className="text-base font-medium">{prettyUrl(code.shortUrl)}</span>
+							<button type="button" onClick={copy}
+								className="flex h-11 items-center gap-1.5 rounded-full bg-chip px-3.5 text-sm font-medium transition-colors duration-fast ease-out-quart md:h-9">
+								{copied === "copied" ? <Check size={16} /> : <Copy size={16} />}
+								{copied === "copied" ? "Copied" : "Copy"}
+							</button>
+							<span role="status" className="sr-only">{copied === "copied" ? "Short link copied" : ""}</span>
+						</div>
+						<span className="text-sm text-ink-soft">Dynamic · made {madeOn}</span>
 					</div>
-					<span className="text-sm text-ink-soft">Dynamic · made {madeOn}</span>
-				</div>
+				) : (
+					<span className="text-sm text-ink-soft">{contentLabel(code.contentType)} · made {madeOn}</span>
+				)}
 				{copied === "failed" && <ErrorLine>We couldn't copy the link. Select it and copy it yourself.</ErrorLine>}
 			</div>
 
@@ -158,7 +197,7 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 					<section className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface" aria-label="Download">
 						<div className="flex items-center justify-center bg-surface-sunken p-6 md:p-8">
 							<div className="w-52 rounded-3xl border-3 border-sticker-edge bg-sticker p-3.5 shadow-hard md:w-71 md:p-4.5">
-								<QrArt svg={file.preview} label={`QR code for ${prettyUrl(code.shortUrl)}`} />
+								<QrArt svg={file.preview} label={`QR code for ${code.shortUrl ? prettyUrl(code.shortUrl) : name}`} />
 							</div>
 						</div>
 						<div className="flex flex-col gap-3 border-t border-line p-4 md:p-6">
@@ -171,19 +210,27 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 							<p className="text-xs text-ink-soft">PNG for WhatsApp and the web. SVG or PDF for print shops.</p>
 						</div>
 					</section>
-					<PointsTo codeId={code.id} destination={code.destination} />
+					{code.kind === "dynamic" && <PointsTo codeId={code.id} destination={code.destination} />}
 					{deleteTrigger("max-md:hidden")}
 				</div>
-				<div className="min-w-0 flex-1">{analytics}</div>
+				<div className="min-w-0 flex-1">
+					{code.kind === "dynamic" ? analytics : <WhatItHolds fields={heldFields(code.contentType, code.destination)} />}
+				</div>
 				{deleteTrigger("md:hidden")}
 			</div>
 
 			<Dialog open={confirming} onClose={() => setConfirming(false)} labelledBy="delete-title">
 				<h2 id="delete-title" className="font-display text-step">Delete this code?</h2>
-				<p className="text-base text-ink-soft md:text-sm">
-					{name} stops working straight away. Anyone who scans a printed copy will see a page saying the code no longer works.
-					{allTimeScans === "0" ? "" : ` Its ${allTimeScans} ${allTimeScans === "1" ? "scan goes" : "scans go"} too.`} You can't undo this.
-				</p>
+				{code.kind === "dynamic" ? (
+					<p className="text-base text-ink-soft md:text-sm">
+						{name} stops working straight away. Anyone who scans a printed copy will see a page saying the code no longer works.
+						{allTimeScans === "0" ? "" : ` Its ${allTimeScans} ${allTimeScans === "1" ? "scan goes" : "scans go"} too.`} You can't undo this.
+					</p>
+				) : (
+					<p className="text-base text-ink-soft md:text-sm">
+						{name} is removed from Your codes. Copies you've already printed or shared keep working, because what it holds is in the code itself. You can't undo this.
+					</p>
+				)}
 				{deleteError && <ErrorLine>{deleteError}</ErrorLine>}
 				<div className="flex flex-col-reverse gap-3 md:flex-row md:justify-end">
 					<button type="button" className={secondaryButton} onClick={() => setConfirming(false)}>Keep it</button>

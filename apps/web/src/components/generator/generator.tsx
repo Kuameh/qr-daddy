@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, CheckCircle, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
 import { SHORT_LINK_ORIGIN } from "@qr-daddy/core";
 import { DataTooLongError, LOGO_SIZES, encode, toSvg, type LogoSize, type Pattern, type QrCode, type SvgOptions } from "@qr-daddy/qr";
 import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -11,10 +11,10 @@ import { DEV_MODE } from "@/lib/dev-mode";
 import { downloadPdf, downloadPng, downloadSvg } from "@/lib/download";
 import { MIN_SCAN_CONTRAST, QR_BACKGROUND, QR_COLOURS, contrastRatio } from "@/lib/qr-palette";
 import { styleFor, svgOptions } from "@/lib/qr-style";
-import { CONTENT_TYPES, EMPTY_FIELDS, contentText, type ContentType, type Fields } from "./content";
+import { CONTENT_TYPES, EMPTY_FIELDS, contentText, contentTitle, type ContentType, type Fields } from "./content";
 import { saveDraft, takeDraft } from "./draft";
 import { ContentFields } from "./fields";
-import { useDynamicCode } from "./use-dynamic-code";
+import { useSavedCode, type SaveTarget } from "./use-saved-code";
 
 const PATTERNS: Array<{ value: Pattern; label: string; glyph: string }> = [
 	{ value: "square", label: "Square", glyph: "rounded-none" },
@@ -55,21 +55,23 @@ const chip = (active: boolean) =>
 	`min-h-11 rounded-full px-3.5 text-sm transition-colors duration-fast ease-out-quart md:min-h-9 md:px-3 ${active ? "bg-ink text-surface" : "bg-chip text-ink"}`;
 
 /**
- * The free generator. Static codes need no account and never leave the browser. Dynamic codes
- * (links only) need one: signed out, the toggle explains why and offers sign-in while the
- * static code stays downloadable; signed in, the code encodes a short link made on first download.
+ * The free generator. Signed out, codes need no account and never leave the browser. Signed in,
+ * every download is saved to Your codes (static codes in the background, without holding up the
+ * file). Dynamic codes (links only) need an account: signed out, the toggle explains why and
+ * offers sign-in while the static code stays downloadable; signed in, the code encodes a short
+ * link made on first download.
  */
-export function Generator({ signedIn, startDynamic }: { signedIn: boolean; startDynamic: boolean }) {
+export function Generator({ signedIn }: { signedIn: boolean }) {
 	const [type, setType] = useState<ContentType>("link");
 	const [fields, setFields] = useState<Fields>(EMPTY_FIELDS);
 	const [pattern, setPattern] = useState<Pattern>("rounded");
 	const [colour, setColour] = useState<string>(INK);
 	const [logo, setLogo] = useState<{ href: string; size: LogoSize } | null>(null);
 	const [logoError, setLogoError] = useState<string | null>(null);
-	const [dynamic, setDynamic] = useState(startDynamic);
+	const [dynamic, setDynamic] = useState(false);
 	const [step, setStep] = useState(1);
 
-	// Back from signing in for a dynamic code: pick up where the user left off.
+	// Back from signing in (to keep codes, or for a dynamic code): pick up where the user left off.
 	useEffect(() => {
 		const draft = takeDraft();
 		if (!draft) return;
@@ -78,15 +80,27 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 		setPattern(draft.pattern);
 		setColour(draft.colour);
 		setLogo(draft.logo);
-		setDynamic(true);
+		setDynamic(draft.dynamic ?? true);
 	}, []);
 
-	const content = useDeferredValue(contentText(type, fields));
+	// The preview lags typing a little. The type and title it was made from lag with it, so a saved
+	// code always matches the file that was downloaded.
+	const shown = useDeferredValue(
+		useMemo(() => ({ type, content: contentText(type, fields), title: contentTitle(type, fields) }), [type, fields]),
+	);
+	const content = shown.content;
 	const style = useMemo(() => styleFor(pattern, colour), [pattern, colour]);
-	const dynamicOn = dynamic && signedIn && type === "link";
-	const dynamicCode = useDynamicCode(style, dynamicOn, content);
-	const madeCode = dynamicOn && dynamicCode.code?.destination === content ? dynamicCode.code : null;
-	const text = content && dynamicOn ? (madeCode?.shortUrl ?? PENDING_SHORT_URL) : content;
+	const shownDynamic = dynamic && signedIn && shown.type === "link";
+	const target = useMemo<SaveTarget | null>(
+		() =>
+			signedIn && shown.content
+				? { kind: shownDynamic ? "dynamic" : "static", contentType: shown.type, destination: shown.content, title: shown.title }
+				: null,
+		[signedIn, shown, shownDynamic],
+	);
+	const saved = useSavedCode(style, target);
+	const madeCode = shownDynamic ? saved.code : null;
+	const text = content && shownDynamic ? (madeCode?.shortUrl ?? PENDING_SHORT_URL) : content;
 	const options = useMemo<SvgOptions>(() => ({ ...svgOptions(style), logo: logo ?? undefined }), [style, logo]);
 
 	const result = useMemo<Result>(() => {
@@ -102,23 +116,29 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 	/** What a download saves: the static code as previewed, or the dynamic code once it exists. */
 	async function fileToSave(): Promise<Ready | null> {
 		if (result.kind !== "ready") return null;
-		if (!dynamicOn || !content) return result;
-		const made = await dynamicCode.ensure(content);
-		return made ? render(made.shortUrl, options) : null;
+		if (target?.kind !== "dynamic") return result;
+		const made = await saved.ensure();
+		return made?.shortUrl ? render(made.shortUrl, options) : null;
 	}
 
 	async function save(kind: "svg" | "pdf" | "png") {
 		const file = await fileToSave();
 		if (!file) return;
-		if (kind === "svg") downloadSvg(file.file, `${filename}.svg`);
-		if (kind === "pdf") await downloadPdf(file.qr, file.options, `${filename}.pdf`);
-		if (kind === "png") await downloadPng(file.file, `${filename}.png`);
+		const download =
+			kind === "svg" ? downloadSvg(file.file, `${filename}.svg`)
+			: kind === "pdf" ? downloadPdf(file.qr, file.options, `${filename}.pdf`)
+			: downloadPng(file.file, `${filename}.png`);
+		// Signed in, a static code is saved to Your codes alongside the download, never before it.
+		if (target?.kind === "static") void saved.ensure();
+		await download;
 	}
+
+	// Signed out, going to sign in: keep the work so it survives the trip.
+	const keepDraft = (withDynamic: boolean) => saveDraft({ type, fields, pattern, colour, logo, dynamic: withDynamic });
 
 	function toggleDynamic(on: boolean) {
 		setDynamic(on);
-		// Signed out, turning it on leads to sign-in: keep the work so it survives the trip.
-		if (on && !signedIn) saveDraft({ type, fields, pattern, colour, logo });
+		if (on && !signedIn) keepDraft(true);
 	}
 
 	const update = <T extends ContentType>(t: T, patch: Partial<Fields[T]>) =>
@@ -136,7 +156,8 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 		reader.readAsDataURL(file);
 	}
 
-	const ready = result.kind === "ready" && !dynamicCode.saving;
+	// Only a dynamic code holds the download back: the file needs its short link.
+	const ready = result.kind === "ready" && !(shownDynamic && saved.saving);
 	const filename = `qr-daddy-${type}`;
 	const tooLight = contrastRatio(colour, QR_BACKGROUND) < MIN_SCAN_CONTRAST;
 	const lightWarning = "This colour is too light for some phones to read. Pick a darker one.";
@@ -145,25 +166,42 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 		: logo ? `Scans well · logo covers ${Math.round(LOGO_SIZES[logo.size] ** 2 * 100)}%` : "Ready to download";
 	const emptyHint = CONTENT_TYPES.find((c) => c.type === type)!.empty;
 
-	// Step 3 line for a dynamic code: where its short link stands.
-	const dynamicStatus = dynamicOn && content && (
-		dynamicCode.error ? (
-			<p role="alert" className="flex items-start gap-2 text-sm text-danger motion-safe:animate-callout-in">
-				<WarningCircle size={18} className="mt-px shrink-0" />{dynamicCode.error}
-			</p>
-		) : madeCode ? (
-			<p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-soft motion-safe:animate-callout-in">
-				<span>Short link <span className="font-medium text-ink">{madeCode.shortUrl.replace(/^https:\/\//, "")}</span></span>
-				<a href={`/app/codes/${madeCode.id}`} className="flex min-h-11 items-center gap-1 font-medium text-ink underline underline-offset-4 md:min-h-0">
-					Edit and see scans <ArrowRight size={14} />
-				</a>
-			</p>
-		) : (
-			<p className="text-sm text-ink-soft">
-				{dynamicCode.saving ? "Making your short link…" : "Dynamic: your short link is made when you first download."}
-			</p>
-		)
+	const savedError = saved.error && (
+		<p role="alert" className="flex items-start gap-2 text-sm text-danger motion-safe:animate-callout-in">
+			<WarningCircle size={18} className="mt-px shrink-0" />
+			{shownDynamic ? saved.error : `Your code downloaded, but it isn't saved to Your codes. ${saved.error}`}
+		</p>
 	);
+
+	// Step 3 line: where the saved code stands (signed in), or what signing in gives (signed out).
+	const savedStatus = !content ? null
+		: shownDynamic ? (
+			savedError || (madeCode?.shortUrl ? (
+				<p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-soft motion-safe:animate-callout-in">
+					<span>Short link <span className="font-medium text-ink">{madeCode.shortUrl.replace(/^https:\/\//, "")}</span></span>
+					<a href={`/app/codes/${madeCode.id}`} className="flex min-h-11 items-center gap-1 font-medium text-ink underline underline-offset-4 md:min-h-0">
+						Edit and see scans <ArrowRight size={14} />
+					</a>
+				</p>
+			) : (
+				<p className="text-sm text-ink-soft">
+					{saved.saving ? "Making your short link…" : "Dynamic: your short link is made when you first download."}
+				</p>
+			))
+		) : signedIn ? (
+			savedError || (saved.code && (
+				<a href="/app" className="flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft motion-safe:animate-callout-in md:min-h-0">
+					<CheckCircle size={16} className="shrink-0" />
+					Saved to <span className="font-medium text-ink underline underline-offset-4">Your codes</span>
+				</a>
+			))
+		) : !(dynamic && type === "link") && (
+			// The Dynamic callout already offers sign-in; otherwise one quiet line, never in the way.
+			<p className="text-sm text-ink-soft">
+				<a href="/sign-in?next=/" onClick={() => keepDraft(false)} className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-4 md:min-h-0">Sign in</a>
+				{" "}to keep your codes in one place.
+			</p>
+		);
 
 	const downloads = (
 		<>
@@ -210,7 +248,7 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 							</div>
 							<div className="flex gap-2.5">{downloads}</div>
 						</div>
-						{dynamicStatus}
+						{savedStatus}
 					</div>
 				</div>
 
@@ -252,7 +290,7 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 											Dynamic codes need a free account. You can change where the code points after printing and see how many people scan it.
 											Your code still downloads as a regular one without it.
 										</p>
-										<a href="/sign-in?next=/" onClick={() => saveDraft({ type, fields, pattern, colour, logo })}
+										<a href="/sign-in?next=/" onClick={() => keepDraft(true)}
 											className="flex min-h-11 items-center gap-1 self-start text-sm font-medium text-ink underline underline-offset-4 md:min-h-0">
 											Sign in with your email <ArrowRight size={14} />
 										</a>
@@ -325,7 +363,7 @@ export function Generator({ signedIn, startDynamic }: { signedIn: boolean; start
 					<div className={`${step === 3 ? "flex" : "hidden"} flex-col gap-3 motion-safe:animate-step-in md:hidden`}>
 						<StepHeading n={3}>Take it home</StepHeading>
 						<p className={`text-base ${result.kind === "ready" && tooLight ? "text-warning" : "text-ink-soft"}`}>{result.kind === "ready" ? status : "Go back and add what your code should hold."}</p>
-						{dynamicStatus}
+						{savedStatus}
 					</div>
 				</div>
 			</div>

@@ -1,7 +1,7 @@
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { createCode, deleteCode, type Code } from "@qr-daddy/core";
+import { createCode, deleteCode, type DynamicCode } from "@qr-daddy/core";
 import worker, { deviceClass } from "../src";
 
 const IPHONE =
@@ -16,7 +16,7 @@ const MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 
 
 const deps = { db: env.DB, kv: env.LINKS };
 
-async function seedCode(destination = "https://example.com/menu"): Promise<Code & { userId: string }> {
+async function seedCode(destination = "https://example.com/menu"): Promise<DynamicCode & { userId: string }> {
   const userId = crypto.randomUUID();
   await env.DB.prepare("INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)")
     .bind(userId, `${userId}@example.com`, Date.now())

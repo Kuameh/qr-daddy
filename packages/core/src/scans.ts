@@ -45,7 +45,7 @@ export async function recordScan(deps: Deps, scan: ScanInput): Promise<void> {
 
 /**
  * Scan analytics for the user's code over the last `days` UTC days, today included (1 to 365).
- * Null when the code doesn't exist, is deleted or belongs to someone else.
+ * Null when the code doesn't exist, is deleted, belongs to someone else, or is static (no short link, so no scans).
  */
 export async function scanSummary(
   deps: Deps,
@@ -53,7 +53,7 @@ export async function scanSummary(
   codeId: string,
   { days = 30 }: { days?: number } = {},
 ): Promise<ScanSummary | null> {
-  if (!(await getCode(deps, userId, codeId))) return null;
+  if ((await getCode(deps, userId, codeId))?.kind !== "dynamic") return null;
 
   const span = Math.min(Math.max(Math.floor(days), 1), 365);
   const now = clock(deps);
