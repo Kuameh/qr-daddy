@@ -30,4 +30,3 @@ export function contrastRatio(a: string, b: string) {
 }
 export const QR_ACCENT_EYE = "#2B4BFF";
 export const QR_TINT = "#DDE3FF";
-export const QR_PLACEHOLDER = "#E4E4DF";

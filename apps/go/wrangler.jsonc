@@ -1,0 +1,29 @@
+// Redirect Worker for q.ashiangmor.com: /<slug> -> 302 to the code's destination, and records the scan.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "qr-daddy-go",
+  "main": "src/index.ts",
+  // Newest date the pinned workerd (1.20261019) supports.
+  "compatibility_date": "2026-10-19",
+  "routes": [{ "pattern": "q.ashiangmor.com", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qr-daddy-db",
+      // Account "Launchpad Tech". The web app binds the same database.
+      "database_id": "f2be6785-1840-4d96-97f1-08b71cfac06e",
+      "migrations_dir": "../../packages/core/migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "LINKS",
+      // KV namespace "qr-daddy-links". The web app binds the same namespace.
+      "id": "dfa089e80e1c48899bbf93e1516dc6bf"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  }
+}

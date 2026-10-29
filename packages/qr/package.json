@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./pdf": "./src/render/pdf.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1"
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
