@@ -43,6 +43,7 @@ Never `--remote` and never deploy without the owner's go-ahead. Cloudflare resou
 
 ## Doc index
 
+- Emails: `emails/*.html`, uploaded to Resend as templates (alias = file name). Design rules in DESIGN_SYSTEM.md § Email.
 - Design system: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) + [docs/design-system.html](docs/design-system.html). Update both together. Designs: Brilliant project `qr-daddy`, canvases "QR Daddy — Final" (home, generator) and "QR Daddy — Account" (sign-in, Your codes, code detail).
 
 ## Rules
