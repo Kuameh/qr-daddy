@@ -74,7 +74,7 @@ function Row({ code, now }: { code: CodeWithStats; now: number }) {
 	return (
 		<li className="border-t border-line first:border-t-0">
 			<a href={`/app/codes/${code.id}`} className="flex items-start gap-3 px-4 py-4 transition-colors duration-fast ease-out-quart active:bg-surface-sunken md:items-center md:gap-4 md:px-6">
-				<CodeThumb text={code.shortUrl ?? code.destination} style={code.style} />
+				<CodeThumb text={code.shortUrl ?? code.destination} style={code.style} hasLogo={code.hasLogo} />
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<span className="text-base font-medium">{name}</span>
 					<span className="truncate text-sm text-ink-soft">{code.shortUrl ? prettyUrl(code.shortUrl) : contentLabel(code.contentType)}</span>

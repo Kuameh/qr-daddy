@@ -51,3 +51,18 @@ describe("rendered codes scan", () => {
 		expect(() => encode("x".repeat(3000), { withLogo: true })).toThrow(DataTooLongError);
 	});
 });
+
+describe("logo markup", () => {
+	it("escapes the logo href so it can't end the attribute or open a tag", () => {
+		const href = `data:image/png;base64,AA"/><script>alert(1)</script><x a="&`;
+		const svg = toSvg(encode(TEXTS.link, { withLogo: true }), { logo: { href, size: "medium" } });
+		expect(svg).toContain(`href="data:image/png;base64,AA&quot;/&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;x a=&quot;&amp;"`);
+		expect(svg).not.toContain("<script");
+		expect(svg.match(/<image /g)).toHaveLength(1);
+	});
+
+	it("leaves a plain data URL as it is", () => {
+		const svg = toSvg(encode(TEXTS.link, { withLogo: true }), { logo: { href: LOGO, size: "small" } });
+		expect(svg).toContain(`href="${LOGO}"`);
+	});
+});

@@ -138,7 +138,7 @@
 </head>
 <body>
 <main>
-  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.6</span></h1>
+  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.7</span></h1>
   <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>. Designs: Brilliant project <code>qr-daddy</code>, canvases “QR Daddy — Final” and “QR Daddy — Account”.</p>
   <p><b style="color:var(--ink)">Product rule.</b> Making and downloading a static code never needs an account. Only turning on Dynamic asks for one, and it explains the benefit (change where the code points after printing, see its scans) instead of blocking. Signing in is a benefit, never a gate. Signed in, every code downloaded from the generator (static or dynamic) is saved to Your codes in its style; signed out, nothing is saved.</p>
 
@@ -224,6 +224,7 @@
     <span style="color:var(--ink-soft)"><u style="color:var(--ink);font-weight:500">Sign in</u> to keep your codes in one place.</span>
   </div>
   <p>Signed in, the first download of a static code saves it to Your codes alongside the file (the download never waits), then step 3 shows “Saved to Your codes” (desktop bar and phone step 3). If saving fails the file still downloads and the danger line says so. Signed out, one quiet benefit line instead, hidden while the Dynamic callout already offers sign-in.</p>
+  <p><b style="color:var(--ink)">Logos.</b> Two copies. The original as picked (PNG, JPG, WebP or SVG under 2 MB) drives the preview, every file and the sign-in draft, so an SVG logo stays vector in the SVG file and PDFs get a 1024px PNG. Signed in, saving makes a copy for Your codes: 512px on its longest side, PNG, else WebP where the browser can write it, else JPEG on white, at most 200,000 characters; its size (Small / Medium / Large) is in the style. If no copy fits, the code is saved without its logo and the files still carry it. A static code takes a new logo only when downloaded again (the last download wins); a dynamic code saves logo changes after a 600ms pause, sending the logo only when it changed. The detail page draws the saved copy at the original error correction, so a re-download is the code that was printed; its logo is the 512px copy (an SVG logo comes back as a raster).</p>
 
   <h3>Account menu</h3>
   <div class="flex" style="align-items:flex-start; gap:24px">
@@ -307,6 +308,9 @@
     <tr><td>Empty</td><td>Ghost code in <code>ghost</code> + “Paste a link to see your code.”</td></tr>
     <tr><td>Too long</td><td><span style="color:var(--danger)">●</span> “That's too much to fit in one QR code. Make it shorter.” Downloads disabled.</td></tr>
     <tr><td>Logo file too big</td><td>“That logo file is too big. Use one under 2 MB.”</td></tr>
+    <tr><td>Logo can't be read</td><td>“We couldn't open that image. Try a PNG, JPG or SVG file.” The logo isn't added.</td></tr>
+    <tr><td>Logo too detailed to keep</td><td>Never blocks adding or downloading. Signed in, the code is saved without it, with a quiet line under the saved note: “Your code is saved without its logo: it has too much detail to keep.”</td></tr>
+    <tr><td>Saved logo refused</td><td>Server check, in the step 3 saved-note failure line: “We can't keep that logo. Use a PNG, JPG or WebP image under 140 KB.”</td></tr>
     <tr><td>Colour too light</td><td><span style="display:inline-block;background:var(--warning-tint);padding:6px 10px;border-radius:12px"><span style="color:var(--warning)">●</span> “This colour is too light for some phones to read. Pick a darker one.”</span> Under 3:1 contrast with white. Downloads stay enabled.</td></tr>
   </table>
 
@@ -373,6 +377,7 @@
   </div>
 
   <h2>Changelog</h2>
+  <p><b>v1.7 · 2026-10-29</b> Saved codes keep their logo: the generator keeps the original for its preview and files and saves a 512px copy (PNG, WebP or JPEG on white) with the code (style gains logoSize); the detail sticker and its downloads use that copy at the original error correction; list thumbnails use the same error correction without drawing the logo. New logo states: can't be read, saved without its logo, refused by the server.</p>
   <p><b>v1.6 · 2026-10-29</b> Signed in, every downloaded code is saved to Your codes, static ones too: static list rows (type label, “Not dynamic”), count line for every kind, new empty state, step 3 saved note and its failure line, signed-out “Sign in to keep your codes” line, static code detail with What it holds, static delete copy and toast.</p>
   <p><b>v1.5 · 2026-10-29</b> Emails built in the app with a dark palette; no Resend templates.</p>
   <p><b>v1.4 · 2026-10-29</b> Email section and the sign-in template (emails/sign-in-link.html, Resend alias sign-in-link).</p>

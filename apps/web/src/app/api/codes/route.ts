@@ -4,7 +4,7 @@ import { coreDeps } from "@/lib/server/cloudflare";
 import { currentUser } from "@/lib/server/session";
 
 /**
- * Saves a code for the signed-in user. Body: `{ kind?, contentType?, destination, title?, style? }`;
+ * Saves a code for the signed-in user. Body: `{ kind?, contentType?, destination, title?, style?, logo? }`;
  * `kind` is "dynamic" (default) or "static". A static code saved again answers the existing one.
  */
 export async function POST(request: Request) {
@@ -19,6 +19,8 @@ export async function POST(request: Request) {
 			destination: typeof body?.destination === "string" ? body.destination : "",
 			title: typeof body?.title === "string" ? body.title : null,
 			style: body?.style ?? null,
+			// A data URL; checked by createCode.
+			logo: typeof body?.logo === "string" ? body.logo : null,
 		});
 		return result.ok ? Response.json(result.value, { status: 201 }) : failureResponse(result);
 	});

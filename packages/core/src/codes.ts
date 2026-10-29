@@ -10,6 +10,14 @@ const MAX_DESTINATION_LENGTH = 2048;
 /** Longest name a code can have. The web app trims generated names to this too. */
 export const MAX_TITLE_LENGTH = 120;
 const MAX_STYLE_LENGTH = 10_000;
+/**
+ * Longest logo, in characters of its data URL: about 146 KB of image once decoded (the message
+ * says 140 KB to stay under it). The browser shrinks the saved copy to 512 px first, which keeps
+ * nearly all logos far below this.
+ */
+export const MAX_LOGO_LENGTH = 200_000;
+// The logo ends up inside SVG markup, so only plain base64 raster images get through.
+const LOGO_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const SLUG_ATTEMPTS = 5;
 
 export type CodeKind = "dynamic" | "static";
@@ -31,7 +39,7 @@ interface CodeFields {
   updatedAt: number;
 }
 
-export type DynamicCode = CodeFields & {
+type DynamicFields = {
   kind: "dynamic";
   contentType: "link";
   slug: string;
@@ -39,12 +47,24 @@ export type DynamicCode = CodeFields & {
   shortUrl: string;
 };
 
-export type StaticCode = CodeFields & { kind: "static"; contentType: ContentType; slug: null; shortUrl: null };
+type StaticFields = { kind: "static"; contentType: ContentType; slug: null; shortUrl: null };
 
+interface LogoField {
+  /** The logo in the middle of the code as a data URL (PNG, JPEG or WebP), or null for none. */
+  logo: string | null;
+}
+
+export type DynamicCode = CodeFields & DynamicFields & LogoField;
+export type StaticCode = CodeFields & StaticFields & LogoField;
 export type Code = DynamicCode | StaticCode;
 
-/** Static codes have no scans, so their counts are always zero. */
-export type CodeWithStats = Code & {
+/**
+ * A code in the list. The logo itself isn't loaded (it can be 200,000 characters), only whether
+ * there is one, so the thumbnail can encode with the same error correction as the print.
+ * Static codes have no scans, so their counts are always zero.
+ */
+export type CodeWithStats = CodeFields & (DynamicFields | StaticFields) & {
+  hasLogo: boolean;
   totalScans: number;
   /** Scans in the 7 days up to now (rolling, not calendar days). */
   scansLast7Days: number;
@@ -64,16 +84,19 @@ export interface CodeInput {
   title?: string | null;
   /** Any JSON-serialisable value; null means none. */
   style?: unknown;
+  /** A data URL (see `validateLogo`). Blank or null means no logo. */
+  logo?: string | null;
 }
 
 /** Omitted fields are left as they are. A static code's destination can't change. */
-export type CodePatch = Partial<Pick<CodeInput, "destination" | "title" | "style">>;
+export type CodePatch = Partial<Pick<CodeInput, "destination" | "title" | "style" | "logo">>;
 
 export type CodeInputFailure =
   | "bad_destination"
   | "bad_content_type"
   | "title_too_long"
   | "style_too_large"
+  | "bad_logo"
   | "fixed_content";
 
 /** The KV value stored under each slug. */
@@ -94,9 +117,17 @@ interface CodeRow {
   updated_at: number;
 }
 
-const CODE_COLUMNS = "id, kind, content_type, slug, destination, title, style_json, created_at, updated_at";
+type LogoRow = CodeRow & { logo: string | null };
 
-function toCode(row: CodeRow): Code {
+// Every column but the logo, which only single-code reads load.
+const SUMMARY_COLUMNS = "id, kind, content_type, slug, destination, title, style_json, created_at, updated_at";
+const CODE_COLUMNS = `${SUMMARY_COLUMNS}, logo`;
+
+function toCode(row: LogoRow): Code {
+  return { ...toSummary(row), logo: row.logo };
+}
+
+function toSummary(row: CodeRow): CodeFields & (DynamicFields | StaticFields) {
   const fields: CodeFields = {
     id: row.id,
     destination: row.destination,
@@ -125,19 +156,37 @@ export function validateDestination(destination: string): Result<string, "bad_de
 
 /**
  * A static code's content, stored exactly as the QR code encodes it (no trimming). It must fit in a
- * QR code at the error correction Your codes renders with, so a saved code can always be drawn.
+ * QR code at the error correction Your codes renders with (higher with a logo), so a saved code can
+ * always be drawn.
  */
-function validateStaticContent(content: string): Result<string, "bad_destination"> {
+function validateStaticContent(content: string, withLogo: boolean): Result<string, "bad_destination"> {
   if (!content.trim()) return fail("bad_destination", "There's nothing in this code yet. Add what it should hold.");
   try {
-    encode(content);
+    encode(content, { withLogo });
   } catch (err) {
     if (err instanceof DataTooLongError) {
-      return fail("bad_destination", "That's too much to fit in one QR code. Make it shorter.");
+      return fail(
+        "bad_destination",
+        withLogo
+          ? "That's too much to fit in one QR code with a logo. Make it shorter or remove the logo."
+          : "That's too much to fit in one QR code. Make it shorter.",
+      );
     }
     throw err;
   }
   return ok(content);
+}
+
+/**
+ * The logo to store, or null for none (null, undefined and "" all mean none). It must be a base64
+ * PNG, JPEG or WebP data URL of at most {@link MAX_LOGO_LENGTH} characters.
+ */
+export function validateLogo(logo: string | null | undefined): Result<string | null, "bad_logo"> {
+  if (!logo) return ok(null);
+  if (logo.length > MAX_LOGO_LENGTH || !LOGO_PATTERN.test(logo)) {
+    return fail("bad_logo", "We can't keep that logo. Use a PNG, JPG or WebP image under 140 KB.");
+  }
+  return ok(logo);
 }
 
 function validateTitle(title: string | null | undefined): Result<string | null, "title_too_long"> {
@@ -180,7 +229,10 @@ export async function createCode(
   if (!CONTENT_TYPES.includes(contentType) || (kind === "dynamic" && contentType !== "link")) {
     return fail("bad_content_type", "We couldn't tell what this code holds. Reload the page and try again.");
   }
-  const destination = kind === "static" ? validateStaticContent(input.destination) : validateDestination(input.destination);
+  const logo = validateLogo(input.logo);
+  if (!logo.ok) return logo;
+  const destination =
+    kind === "static" ? validateStaticContent(input.destination, logo.value !== null) : validateDestination(input.destination);
   if (!destination.ok) return destination;
   const title = validateTitle(input.title);
   if (!title.ok) return title;
@@ -190,17 +242,19 @@ export async function createCode(
   const now = clock(deps);
   const id = crypto.randomUUID();
   if (kind === "static") {
-    // A title the user has since changed is kept; the style is the one just downloaded.
+    // A title the user has since changed is kept; the style and logo are the ones just downloaded
+    // (no logo clears a saved one).
     const row = await deps.db
       .prepare(
-        `INSERT INTO codes (id, user_id, kind, content_type, slug, destination, title, style_json, created_at, updated_at)
-         VALUES (?, ?, 'static', ?, NULL, ?, ?, ?, ?, ?)
+        `INSERT INTO codes (id, user_id, kind, content_type, slug, destination, title, style_json, logo, created_at, updated_at)
+         VALUES (?, ?, 'static', ?, NULL, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (user_id, destination) WHERE kind = 'static' AND deleted_at IS NULL
-         DO UPDATE SET style_json = excluded.style_json, title = COALESCE(codes.title, excluded.title), updated_at = excluded.updated_at
+         DO UPDATE SET style_json = excluded.style_json, logo = excluded.logo,
+           title = COALESCE(codes.title, excluded.title), updated_at = excluded.updated_at
          RETURNING ${CODE_COLUMNS}`,
       )
-      .bind(id, userId, contentType, destination.value, title.value, style.value, now, now)
-      .first<CodeRow>();
+      .bind(id, userId, contentType, destination.value, title.value, style.value, logo.value, now, now)
+      .first<LogoRow>();
     return ok(toCode(row!));
   }
 
@@ -208,11 +262,11 @@ export async function createCode(
     const slug = (deps.newSlug ?? randomSlug)();
     const row = await deps.db
       .prepare(
-        `INSERT INTO codes (id, user_id, slug, destination, title, style_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (slug) DO NOTHING RETURNING ${CODE_COLUMNS}`,
+        `INSERT INTO codes (id, user_id, slug, destination, title, style_json, logo, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (slug) DO NOTHING RETURNING ${CODE_COLUMNS}`,
       )
-      .bind(id, userId, slug, destination.value, title.value, style.value, now, now)
-      .first<CodeRow>();
+      .bind(id, userId, slug, destination.value, title.value, style.value, logo.value, now, now)
+      .first<LogoRow>();
     if (row) {
       await putLink(deps, slug, { codeId: id, destination: destination.value });
       return ok(toCode(row));
@@ -237,7 +291,7 @@ export async function updateCode(
     const destination = validateDestination(patch.destination);
     if (!destination.ok) {
       // A static code's content can't change at all; say that rather than "enter a link".
-      return (await getCode(deps, userId, codeId))?.kind === "static" ? fixedContent() : destination;
+      return (await kindAndContent(deps, userId, codeId))?.kind === "static" ? fixedContent() : destination;
     }
     sets.push("destination = ?");
     values.push(destination.value);
@@ -254,6 +308,21 @@ export async function updateCode(
     sets.push("style_json = ?");
     values.push(style.value);
   }
+  if (patch.logo !== undefined) {
+    const logo = validateLogo(patch.logo);
+    if (!logo.ok) return logo;
+    if (logo.value !== null) {
+      // A logo raises the error correction, so a static code's content must still fit with it.
+      const current = await kindAndContent(deps, userId, codeId);
+      if (!current) return notFound();
+      if (current.kind === "static") {
+        const fits = validateStaticContent(current.destination, true);
+        if (!fits.ok) return fits;
+      }
+    }
+    sets.push("logo = ?");
+    values.push(logo.value);
+  }
   sets.push("updated_at = ?");
   values.push(clock(deps));
   const onlyDynamic = patch.destination !== undefined ? " AND kind = 'dynamic'" : "";
@@ -263,10 +332,10 @@ export async function updateCode(
       `UPDATE codes SET ${sets.join(", ")} WHERE id = ? AND user_id = ? AND deleted_at IS NULL${onlyDynamic} RETURNING ${CODE_COLUMNS}`,
     )
     .bind(...values, codeId, userId)
-    .first<CodeRow>();
+    .first<LogoRow>();
   if (!row) {
     // Nothing changed either way; this read only picks the message.
-    if (onlyDynamic && (await getCode(deps, userId, codeId))?.kind === "static") return fixedContent();
+    if (onlyDynamic && (await kindAndContent(deps, userId, codeId))?.kind === "static") return fixedContent();
     return notFound();
   }
   if (patch.destination !== undefined && row.slug !== null) {
@@ -275,14 +344,17 @@ export async function updateCode(
   return ok(toCode(row));
 }
 
-/** The user's live codes of both kinds, newest first, with scan counts (zero for static codes). */
+/**
+ * The user's live codes of both kinds, newest first, with scan counts (zero for static codes).
+ * Logos aren't loaded, only `hasLogo`; `getCode` has the logo.
+ */
 export async function listCodes(deps: Deps, userId: string): Promise<CodeWithStats[]> {
   const now = clock(deps);
   const firstDay = now - (now % DAY_MS) - 6 * DAY_MS;
   const [codes, daily] = await deps.db.batch([
     deps.db
       .prepare(
-        `SELECT ${CODE_COLUMNS},
+        `SELECT ${SUMMARY_COLUMNS}, logo IS NOT NULL AS has_logo,
            (SELECT COUNT(*) FROM scans s WHERE s.code_id = c.id) AS total_scans,
            (SELECT COUNT(*) FROM scans s WHERE s.code_id = c.id AND s.scanned_at >= ?2) AS recent_scans,
            (SELECT MAX(s.scanned_at) FROM scans s WHERE s.code_id = c.id) AS last_scanned_at
@@ -304,9 +376,11 @@ export async function listCodes(deps: Deps, userId: string): Promise<CodeWithSta
     days[row.day] = row.scans;
     perCode.set(row.code_id, days);
   }
-  return (codes.results as (CodeRow & { total_scans: number; recent_scans: number; last_scanned_at: number | null })[]).map(
+  type ListRow = CodeRow & { has_logo: number; total_scans: number; recent_scans: number; last_scanned_at: number | null };
+  return (codes.results as ListRow[]).map(
     (row) => ({
-      ...toCode(row),
+      ...toSummary(row),
+      hasLogo: row.has_logo === 1,
       totalScans: row.total_scans,
       scansLast7Days: row.recent_scans,
       dailyScans: perCode.get(row.id) ?? Array<number>(7).fill(0),
@@ -315,12 +389,20 @@ export async function listCodes(deps: Deps, userId: string): Promise<CodeWithSta
   );
 }
 
+/** A live code's kind and content, without its logo: what updateCode needs for its checks. */
+function kindAndContent(deps: Deps, userId: string, codeId: string): Promise<Pick<CodeRow, "kind" | "destination"> | null> {
+  return deps.db
+    .prepare("SELECT kind, destination FROM codes WHERE id = ? AND user_id = ? AND deleted_at IS NULL")
+    .bind(codeId, userId)
+    .first<Pick<CodeRow, "kind" | "destination">>();
+}
+
 /** The user's code, or null when it doesn't exist, is deleted or belongs to someone else. */
 export async function getCode(deps: Deps, userId: string, codeId: string): Promise<Code | null> {
   const row = await deps.db
     .prepare(`SELECT ${CODE_COLUMNS} FROM codes WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
     .bind(codeId, userId)
-    .first<CodeRow>();
+    .first<LogoRow>();
   return row ? toCode(row) : null;
 }
 

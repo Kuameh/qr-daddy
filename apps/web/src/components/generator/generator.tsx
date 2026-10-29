@@ -3,12 +3,13 @@
 import { ArrowLeft, ArrowRight, CheckCircle, UploadSimple, WarningCircle, X } from "@phosphor-icons/react";
 import { SHORT_LINK_ORIGIN } from "@qr-daddy/core";
 import { DataTooLongError, LOGO_SIZES, encode, toSvg, type LogoSize, type Pattern, type QrCode, type SvgOptions } from "@qr-daddy/qr";
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DevModeBadge } from "@/components/dev-mode-badge";
 import { QrArt } from "@/components/qr-art";
 import { primaryButton, secondaryButton } from "@/components/ui/buttons";
 import { DEV_MODE } from "@/lib/dev-mode";
 import { downloadPdf, downloadPng, downloadSvg } from "@/lib/download";
+import { canReadImage, logoToSave } from "@/lib/logo";
 import { MIN_SCAN_CONTRAST, QR_BACKGROUND, QR_COLOURS, contrastRatio } from "@/lib/qr-palette";
 import { styleFor, svgOptions } from "@/lib/qr-style";
 import { CONTENT_TYPES, EMPTY_FIELDS, contentText, contentTitle, type ContentType, type Fields } from "./content";
@@ -68,6 +69,8 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 	const [colour, setColour] = useState<string>(INK);
 	const [logo, setLogo] = useState<{ href: string; size: LogoSize } | null>(null);
 	const [logoError, setLogoError] = useState<string | null>(null);
+	// Counts logo picks and removals: only the latest pick may set the logo once its file is read.
+	const logoPick = useRef(0);
 	const [dynamic, setDynamic] = useState(false);
 	const [step, setStep] = useState(1);
 
@@ -89,7 +92,7 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 		useMemo(() => ({ type, content: contentText(type, fields), title: contentTitle(type, fields) }), [type, fields]),
 	);
 	const content = shown.content;
-	const style = useMemo(() => styleFor(pattern, colour), [pattern, colour]);
+	const style = useMemo(() => styleFor(pattern, colour, logo?.size), [pattern, colour, logo?.size]);
 	const shownDynamic = dynamic && signedIn && shown.type === "link";
 	const target = useMemo<SaveTarget | null>(
 		() =>
@@ -98,10 +101,14 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 				: null,
 		[signedIn, shown, shownDynamic],
 	);
-	const saved = useSavedCode(style, target);
+	const saved = useSavedCode(style, logo?.href ?? null, target);
+	// Signed in, have the copy Your codes keeps ready before the first download needs it.
+	useEffect(() => {
+		if (signedIn && logo) void logoToSave(logo.href);
+	}, [signedIn, logo]);
 	const madeCode = shownDynamic ? saved.code : null;
 	const text = content && shownDynamic ? (madeCode?.shortUrl ?? PENDING_SHORT_URL) : content;
-	const options = useMemo<SvgOptions>(() => ({ ...svgOptions(style), logo: logo ?? undefined }), [style, logo]);
+	const options = useMemo<SvgOptions>(() => svgOptions(style, logo?.href), [style, logo?.href]);
 
 	const result = useMemo<Result>(() => {
 		if (!text) return { kind: "empty" };
@@ -144,16 +151,33 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 	const update = <T extends ContentType>(t: T, patch: Partial<Fields[T]>) =>
 		setFields((current) => ({ ...current, [t]: { ...current[t], ...patch } }));
 
+	/** The preview and every download use the logo as picked; only saving makes a smaller copy. */
 	function pickLogo(file: File | undefined) {
 		if (!file) return;
+		const pick = ++logoPick.current;
 		if (file.size > LOGO_MAX_BYTES) {
 			setLogoError("That logo file is too big. Use one under 2 MB.");
 			return;
 		}
-		setLogoError(null);
 		const reader = new FileReader();
-		reader.onload = () => setLogo((current) => ({ href: String(reader.result), size: current?.size ?? "medium" }));
+		reader.onload = async () => {
+			const href = String(reader.result);
+			const readable = await canReadImage(href);
+			// Picked again or removed in the meantime: that choice stands.
+			if (pick !== logoPick.current) return;
+			if (!readable) {
+				setLogoError("We couldn't open that image. Try a PNG, JPG or SVG file.");
+				return;
+			}
+			setLogoError(null);
+			setLogo((current) => ({ href, size: current?.size ?? "medium" }));
+		};
 		reader.readAsDataURL(file);
+	}
+
+	function removeLogo() {
+		logoPick.current++;
+		setLogo(null);
 	}
 
 	// Only a dynamic code holds the download back: the file needs its short link.
@@ -203,6 +227,11 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 			</p>
 		);
 
+	// Quiet, beside the saved note: downloads still carry the logo, only Your codes goes without it.
+	const logoNote = signedIn && content && saved.logoLeftOut && !saved.error && (
+		<p className="text-sm text-ink-soft motion-safe:animate-callout-in">Your code is saved without its logo: it has too much detail to keep.</p>
+	);
+
 	const downloads = (
 		<>
 			<button type="button" className={secondaryButton} disabled={!ready} onClick={() => save("svg")}>SVG</button>
@@ -249,6 +278,7 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 							<div className="flex gap-2.5">{downloads}</div>
 						</div>
 						{savedStatus}
+						{logoNote}
 					</div>
 				</div>
 
@@ -338,7 +368,7 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 								<div className="flex items-center gap-3">
 									<img src={logo.href} alt="Your logo" className="size-10 rounded-md object-contain" />
 									<span className="flex-1 text-sm">Your logo</span>
-									<button type="button" aria-label="Remove logo" onClick={() => setLogo(null)} className="flex size-11 items-center justify-center md:size-9">
+									<button type="button" aria-label="Remove logo" onClick={removeLogo} className="flex size-11 items-center justify-center md:size-9">
 										<X size={18} />
 									</button>
 								</div>
@@ -364,6 +394,7 @@ export function Generator({ signedIn }: { signedIn: boolean }) {
 						<StepHeading n={3}>Take it home</StepHeading>
 						<p className={`text-base ${result.kind === "ready" && tooLight ? "text-warning" : "text-ink-soft"}`}>{result.kind === "ready" ? status : "Go back and add what your code should hold."}</p>
 						{savedStatus}
+						{logoNote}
 					</div>
 				</div>
 			</div>

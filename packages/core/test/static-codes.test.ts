@@ -165,8 +165,8 @@ describe("migration 0003", () => {
 
     const rows = await db.prepare("SELECT * FROM codes ORDER BY id").all();
     expect(rows.results).toEqual([
-      { id: "c1", user_id: "u1", kind: "dynamic", content_type: "link", slug: "abc123", destination: "https://kofi.example", title: "Menu", style_json: '{"pattern":"dots"}', created_at: 1, updated_at: 2, deleted_at: null },
-      { id: "c2", user_id: "u1", kind: "dynamic", content_type: "link", slug: "gone99", destination: "https://old.example", title: null, style_json: null, created_at: 1, updated_at: 3, deleted_at: 3 },
+      { id: "c1", user_id: "u1", kind: "dynamic", content_type: "link", slug: "abc123", destination: "https://kofi.example", title: "Menu", style_json: '{"pattern":"dots"}', created_at: 1, updated_at: 2, deleted_at: null, logo: null },
+      { id: "c2", user_id: "u1", kind: "dynamic", content_type: "link", slug: "gone99", destination: "https://old.example", title: null, style_json: null, created_at: 1, updated_at: 3, deleted_at: 3, logo: null },
     ]);
     const scans = await db.prepare("SELECT code_id, country FROM scans").all();
     expect(scans.results).toEqual([{ code_id: "c1", country: "GH" }]);

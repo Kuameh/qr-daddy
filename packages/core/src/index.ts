@@ -3,6 +3,9 @@
 // A signed-in person's codes come in two kinds, through the same functions: dynamic codes encode
 // a short link (slug in KV) and collect scans; static codes store the exact QR text, have no
 // slug and no scans, and are upserted per user + content so a repeat download finds the same code.
+// A code can keep its logo (a small base64 PNG/JPEG/WebP data URL, see validateLogo) so a download
+// from Your codes matches the print; only getCode/createCode/updateCode return it, listCodes says
+// whether there is one (`hasLogo`).
 //
 // Every function takes `Deps` first: `{ db: env.DB, kv: env.LINKS }`. Functions that read or
 // write a user's data take `userId`, which must come from `getSession`, never from request input.
@@ -33,7 +36,9 @@ export {
   deleteCode,
   resolveSlug,
   validateDestination,
+  validateLogo,
   MAX_TITLE_LENGTH,
+  MAX_LOGO_LENGTH,
   LINK_CACHE_TTL_SECONDS,
   SHORT_LINK_ORIGIN,
   APP_ORIGIN,

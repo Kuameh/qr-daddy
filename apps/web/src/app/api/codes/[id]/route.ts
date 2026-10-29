@@ -3,7 +3,7 @@ import { apiError, failureResponse, handle, jsonBody, SIGNED_OUT_MESSAGE } from 
 import { coreDeps } from "@/lib/server/cloudflare";
 import { currentUser } from "@/lib/server/session";
 
-/** Changes the user's code. Body: any of `{ destination, title, style }`. Answers the updated code. */
+/** Changes the user's code. Body: any of `{ destination, title, style, logo }`. Answers the updated code. */
 export async function PATCH(request: Request, { params }: RouteContext<"/api/codes/[id]">) {
 	return handle(async () => {
 		const user = await currentUser();
@@ -13,6 +13,7 @@ export async function PATCH(request: Request, { params }: RouteContext<"/api/cod
 		if (typeof body.destination === "string") patch.destination = body.destination;
 		if (typeof body.title === "string" || body.title === null) patch.title = body.title;
 		if ("style" in body) patch.style = body.style;
+		if (typeof body.logo === "string" || body.logo === null) patch.logo = body.logo;
 		const result = await updateCode(await coreDeps(), user.id, (await params).id, patch);
 		return result.ok ? Response.json(result.value) : failureResponse(result);
 	});

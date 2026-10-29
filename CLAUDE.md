@@ -40,6 +40,7 @@ Never `--remote` and never deploy without the owner's go-ahead. Cloudflare resou
 - Sign-in links: at most 3 per email per 15 minutes (`requestMagicLink`). The session cookie `qd_session` is HttpOnly, Secure, SameSite=Lax.
 - Making and downloading a code never needs an account. Only Dynamic asks for one, and says what it gives.
 - `codes.kind` is `dynamic` (short link in KV, scans) or `static` (stores the exact QR text in `destination`, no slug, no KV, no scans). Signed in, every generator download saves a code; `createCode` upserts static codes on the partial unique index `(user_id, destination) WHERE kind = 'static' AND deleted_at IS NULL`, so a repeat download returns the same code. A static code's content never changes.
+- Logos live in D1 (`codes.logo`) as base64 data URLs: PNG, JPEG or WebP only, at most 200,000 characters (`MAX_LOGO_LENGTH`, checked by `validateLogo`), a copy shrunk to 512px in the browser (`apps/web/src/lib/logo.ts`) only when saving; the generator's preview and files use the original. The logo size is in the style (`logoSize`). List queries never select the logo, only `hasLogo`.
 - `NEXT_PUBLIC_DEV_MODE=true` shows unreleased features (Pricing, MoMo) with a Dev badge.
 
 ## Doc index

@@ -1,4 +1,4 @@
-# QR Daddy design system · v1.6
+# QR Daddy design system · v1.7
 
 QR Daddy is a calm tool with a loud voice. The working surface (the generator) is
 neutral, precise and quiet, like Linear. Personality lives in a few deliberate places:
@@ -155,7 +155,7 @@ Phosphor (`@phosphor-icons/react`, `/dist/ssr` in server components), regular we
 - **Inputs:** 48px phones / 46px desktop, `rounded-xl`, `border-line-strong`, focus `border-ink`, 16px text.
 - **Pattern tiles:** 64px; selected = 2px ink border, else 1px `line-strong`. Glyph 18px.
 - **Colour swatches:** 44px target (36px desktop), selected = 2px ink ring (transparent when not selected, so it can fade). 1px `swatch-edge` ring on the fill.
-- **Logo:** dashed drop zone → once added, thumbnail + Small / Medium / Large chips. Sizes are 18%, 22%, 26% of the code width, all proven to scan in `packages/qr/test/render.test.ts`; that is why there is no free slider.
+- **Logo:** dashed drop zone → once added, thumbnail + Small / Medium / Large chips. Sizes are 18%, 22%, 26% of the code width, all proven to scan in `packages/qr/test/render.test.ts`; that is why there is no free slider. A logo has two copies (`lib/logo.ts`). The **original** as picked (PNG, JPG, WebP or SVG, under 2 MB) drives the preview, the PNG/SVG/PDF files and the sign-in draft, so an SVG logo stays vector in the SVG file. Signed in, saving makes a **saved copy** for Your codes: longest side 512px, PNG (transparency kept), else WebP where the browser can write it, else JPEG on white, at most 200,000 characters. Signed out, nothing is shrunk. If no copy fits, the code is saved without its logo and the files still carry it.
 - **Preview sticker:** `sticker` face, 3px `sticker-edge` border, `rounded-3xl`, hard shadow; 224px on phones, 360px on desktop.
 - **Step bar (phone):** three 6px segments: done `ink`, current `accent`, next `line`.
 
@@ -166,8 +166,8 @@ Class strings shared by every screen; 52px tall on phones, 44px from `md`, 2px i
 - **Danger:** `bg-danger`, `text-on-danger`, no shadow. Pressed: 80% opacity. Only inside a confirm dialog ("Delete code").
 - **Text button:** no border, `text-ink-soft`, 44px tall ("Cancel" next to Save). Pressed: `text-ink`.
 - **Destructive link:** "Delete this code": `text-danger` with `Trash`, 44px tall, opens the confirm dialog.
-- **Step 3 downloads:** SVG, PDF (secondary), then Download PNG (primary). PDF is a vector file, 10 cm square including the quiet zone; SVG and WebP logos are converted to PNG in the browser first because PDF can't embed them. In the phone bar the primary reads "PNG" so back + three formats fit at 360px; its accessible name stays "Download PNG".
-- **Detail downloads:** three secondary buttons in a row with `DownloadSimple`: PNG, SVG, PDF; caption "PNG for WhatsApp and the web. SVG or PDF for print shops."
+- **Step 3 downloads:** SVG, PDF (secondary), then Download PNG (primary). PDF is a vector file, 10 cm square including the quiet zone; SVG and WebP logos are redrawn as a 1024px PNG first because PDF can't embed them. In the phone bar the primary reads "PNG" so back + three formats fit at 360px; its accessible name stays "Download PNG".
+- **Detail downloads:** three secondary buttons in a row with `DownloadSimple`: PNG, SVG, PDF; caption "PNG for WhatsApp and the web. SVG or PDF for print shops." The sticker and the files use the saved copy of the logo at its saved size, encoded like the original download (error correction High with a logo), so a re-download is the same code that was printed. Known limit: the logo itself is the 512px saved copy (an SVG logo comes back as a raster), still about 500 dpi at Large on the 10 cm PDF.
 
 ### Dynamic toggle (generator, Link only)
 Shown only for the Link content type, in an `accent-tint` row: switch (`role="switch"`, track `accent` on / `line-strong` off, `on-accent` knob, ink focus ring) + "Dynamic" + "Change where it points any time and see who scans." No Dev badge.
@@ -175,7 +175,7 @@ Shown only for the Link content type, in an `accent-tint` row: switch (`role="sw
 - **Signed in, on:** the code encodes the short link. It is made on the first download (never on a toggle or keystroke) and reused after; style changes are saved to it after a 600ms pause. Step 3 adds one line: before the first download "Dynamic: your short link is made when you first download." (or "Making your short link…"); after, "Short link **q.ashiangmor.com/abc123**" + "Edit and see scans →".
 
 ### Saved note (generator step 3, `use-saved-code.ts`)
-- **Signed in, static code:** the first download saves the code to Your codes alongside the file (the download never waits for it). After it, step 3 (desktop bar and phone step 3) shows `CheckCircle` + "Saved to **Your codes**" (`text-sm ink-soft`, "Your codes" ink, underlined, links to `/app`), fading in with `callout-in`. Nothing shows before the first download or for content not yet downloaded. Style changes after that save to the same code after 600ms, like dynamic codes.
+- **Signed in, static code:** the first download saves the code to Your codes alongside the file (the download never waits for it). After it, step 3 (desktop bar and phone step 3) shows `CheckCircle` + "Saved to **Your codes**" (`text-sm ink-soft`, "Your codes" ink, underlined, links to `/app`), fading in with `callout-in`. Nothing shows before the first download or for content not yet downloaded. A static code takes a new style or logo only when it is downloaded again (the last download wins, including one without a logo); dynamic codes save style and logo changes after a 600ms pause, sending the logo only when it changed. **Saved without its logo:** when the logo can't be made small enough, a quiet `text-sm ink-soft` line under the saved note: "Your code is saved without its logo: it has too much detail to keep."
 - **Save failed:** the file still downloads; `danger` line with `WarningCircle`: "Your code downloaded, but it isn't saved to Your codes." + the plain API message.
 - **Signed out:** one quiet line, "**Sign in** to keep your codes in one place." (`text-sm ink-soft`, "Sign in" ink, underlined), never a prompt in the way. Hidden while the Dynamic callout already offers sign-in. The draft survives the trip.
 
@@ -207,7 +207,7 @@ Bottom-centre, 24px up: `bg-ink text-surface` pill (`rounded-xl`), `CheckCircle`
 ### List rows (Your codes)
 - **Desktop:** column header (`text-xs ink-soft`): Code · Points to (344px) · Scans, last 7 days (224px) · Last scanned (160px) · chevron. Row: 48px thumbnail (a real render of the code in its saved style on a `sticker` face, `rounded-lg`, 1px `line-strong`), name (medium) over the short link (`text-sm ink-soft`), destination, count (display 18px) + sparkline, last scanned ("2 min ago", "Yesterday", "Not yet"), `CaretRight`. Rows are whole-row links divided by `line`; pressed `bg-surface-sunken`.
 - **Phone:** thumbnail, name, short link, "→ destination" (`text-xs`); count, sparkline and last scanned stacked on the right.
-- **Static rows:** same columns. The thumbnail renders the stored QR text in its style; under the name, the **type label** (Link / Wi-Fi / Contact / SMS / Email, `text-sm ink-soft`) takes the short link's place. Points to shows the link for Link codes and stays empty otherwise; the scans column reads "Not dynamic" (`text-sm ink-soft`) and Last scanned is empty. Phones show thumbnail, name and type label only. Names: link → host/path, Wi-Fi → network name, contact → name, SMS → phone, email → address.
+- **Static rows:** same columns. The thumbnail renders the stored QR text in its style (a code with a logo is encoded at High error correction so its pattern matches the print; the logo itself isn't loaded in the list or drawn at 48px); under the name, the **type label** (Link / Wi-Fi / Contact / SMS / Email, `text-sm ink-soft`) takes the short link's place. Points to shows the link for Link codes and stays empty otherwise; the scans column reads "Not dynamic" (`text-sm ink-soft`) and Last scanned is empty. Phones show thumbnail, name and type label only. Names: link → host/path, Wi-Fi → network name, contact → name, SMS → phone, email → address.
 - **Count line:** "8 codes · 903 scans in the last 7 days" (every kind counted; scans come from dynamic codes, and the scans part is left off when there are none).
 - **Empty state:** one panel: ghost code (`ghost`, dots) on `surface-sunken` on the left (on top on phones), then "No codes yet.", "Every code you download while signed in is kept here, so you can download it again any time.", three numbered steps (Make a code · Download it · Turn on Dynamic for links; same 28px ink circles as the generator) and "New code" (primary, `Plus`). "New code" opens the generator (`/#create`).
 
@@ -227,6 +227,9 @@ One rule everywhere: **only the busiest day is `accent`; every other bar is `acc
 | Empty | Ghost code in `ghost` + "Paste a link to see your code." (wording per content type) |
 | Too long | Danger icon + "That's too much to fit in one QR code. Make it shorter." Downloads disabled |
 | Logo file too big | "That logo file is too big. Use one under 2 MB." |
+| Logo can't be read | "We couldn't open that image. Try a PNG, JPG or SVG file." The logo isn't added |
+| Logo too detailed to keep | Never blocks adding the logo or downloading. Signed in, the code is saved without it: "Your code is saved without its logo: it has too much detail to keep." (quiet, under the saved note) |
+| Saved logo refused | Server check (`bad_logo`), shown in the step 3 saved-note failure line: "We can't keep that logo. Use a PNG, JPG or WebP image under 140 KB." |
 | Colour too light | Custom colour under 3:1 contrast with white (`MIN_SCAN_CONTRAST`): `warning-tint` callout under the swatches + warning-coloured status, "This colour is too light for some phones to read. Pick a darker one." Downloads stay enabled |
 
 ### Dev badge (`components/dev-mode-badge.tsx`)
@@ -329,6 +332,8 @@ so emails are the one place hex values are written out, inline, from this palett
 - Always include the raw link under the button, a plain-text part, and a plain "didn't ask for this?" line.
 
 ## Changelog
+
+- **v1.7 · 2026-10-29** Saved codes keep their logo: the generator keeps the original for its preview and files and saves a copy shrunk to 512px (PNG, WebP or JPEG on white) with the code (style gains `logoSize`); the detail sticker and its PNG/SVG/PDF downloads use that copy at the original error correction. New logo states: can't be read, saved without its logo, refused by the server.
 
 - **v1.6 · 2026-10-29** Signed in, every downloaded code is saved to Your codes, static ones too. Static list rows (type label, "Not dynamic"), count line for every kind, new empty-state copy, the step 3 saved note and its failure line, the signed-out "Sign in to keep your codes" line, static code detail with "What it holds", and delete copy and toast for static codes.
 - **v1.2 · 2026-10-29** Account surfaces from the "QR Daddy — Account" canvas: sign-in states, Your codes (list rows, empty state, sparkline), code detail (stat row, scans-per-day chart, meters, Points to with saved state, copy chip, downloads), delete dialog / bottom sheet, toast, account menu (desktop dropdown, phone sheet with scrim). New tokens `on-danger`, `scrim`, `animate-fade-in` and the `dialog-motion` utility; shared button styles (primary, secondary, danger, text). Chart rule: only the busiest day is cobalt. The Dynamic toggle is real (Link only, no Dev badge); Dev badge left on Pricing and MoMo. Product rule written down: static codes never need an account.

@@ -130,11 +130,13 @@ export function CodeDetail({ code, name, madeOn, allTimeScans, analytics }: {
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 
 	const text = code.shortUrl ?? code.destination;
+	// The saved logo and its size, at the same error correction as the original download, so this
+	// is the same code that was printed.
 	const file = useMemo(() => {
-		const qr = encode(text);
-		const options = svgOptions(readStyle(code.style));
+		const qr = encode(text, { withLogo: code.logo !== null });
+		const options = svgOptions(readStyle(code.style), code.logo);
 		return { qr, options, preview: toSvg(qr, options), svg: toSvg(qr, { ...options, size: 1024 }) };
-	}, [text, code.style]);
+	}, [text, code.style, code.logo]);
 	const filename = `qr-daddy-${code.slug ?? code.contentType}`;
 
 	async function copy() {
