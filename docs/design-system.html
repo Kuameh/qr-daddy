@@ -11,9 +11,23 @@
     --paper:#F7F7F5; --surface:#FFFFFF; --surface-sunken:#FBFBFA; --chip:#F1F1EE;
     --ink:#111114; --ink-soft:#55555C; --muted:#6B6B72; --line:#E6E6E1; --line-strong:#D9D9D3; --line-dashed:#CFCFC8;
     --accent:#2B4BFF; --accent-tint:#EEF1FF; --accent-soft:#DDE3FF;
-    --danger:#C8102E; --warning:#B45309; --warning-tint:#FFF4E5;
+    --danger:#C8102E; --on-danger:#FFFFFF; --warning:#B45309; --warning-tint:#FFF4E5; --scrim:#11111466;
+    --ghost:#E4E4DF; --swatch-edge:transparent; --on-accent:#FFFFFF;
+    --sticker:#FFFFFF; --sticker-tint:#DDE3FF; --sticker-edge:#111114;
+    --ease-out-quart:cubic-bezier(0.165, 0.84, 0.44, 1); --ease-out-quint:cubic-bezier(0.23, 1, 0.32, 1);
+    --fast:120ms; --base:180ms; --slow:240ms; --entrance:500ms;
     --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
     --display: "Bricolage Grotesque", "Arial Black", ui-sans-serif, sans-serif;
+    color-scheme: light dark;
+  }
+  /* Dark mode follows the system setting, like the app. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#131315; --surface:#1C1C1F; --surface-sunken:#171719; --chip:#2A2A2E;
+      --ink:#EDEDE8; --ink-soft:#B4B4BB; --muted:#9A9AA2; --line:#2C2C30; --line-strong:#3C3C41; --line-dashed:#4C4C52;
+      --ghost:#2E2E33; --swatch-edge:#4C4C52; --accent-tint:#1B2042; --accent-soft:#242D66;
+      --danger:#FF6B7D; --on-danger:#131315; --warning:#F0A54A; --warning-tint:#2D2114; --scrim:#000000A3;
+    }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 var(--sans); -webkit-font-smoothing:antialiased; }
@@ -26,7 +40,8 @@
   code { font:13px ui-monospace, monospace; background:var(--chip); padding:1px 5px; border-radius:4px; color:var(--ink); }
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }
   .swatch { background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; font-size:13px; }
-  .swatch div { height:64px; border-bottom:1px solid var(--line); }
+  .swatch .halves { display:flex; height:64px; border-bottom:1px solid var(--line); }
+  .swatch .halves i { flex:1; }
   .swatch span { display:block; padding:8px 10px 0; font-weight:500; }
   .swatch small { display:block; padding:0 10px 10px; color:var(--muted); }
   .row { display:flex; align-items:baseline; gap:24px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -35,20 +50,86 @@
   .flex { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   .shadow-box { width:120px; height:80px; background:var(--surface); border:3px solid var(--ink); border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:13px; }
   .step { display:flex; align-items:center; gap:10px; }
-  .step b { width:28px; height:28px; border-radius:999px; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font:800 14px var(--display); }
+  .step b { width:28px; height:28px; border-radius:999px; background:var(--ink); color:var(--surface); display:flex; align-items:center; justify-content:center; font:800 14px var(--display); }
   .step span { font:800 20px/1.2 var(--display); letter-spacing:-0.025em; }
   .chip { min-height:36px; padding:0 12px; border-radius:999px; border:0; background:var(--chip); font:14px var(--sans); color:var(--ink); }
-  .chip.on { background:var(--ink); color:#fff; }
-  .input { height:46px; width:100%; max-width:360px; border:1px solid var(--line-strong); border-radius:12px; padding:0 14px; font:16px var(--sans); }
-  .tile { width:64px; height:64px; border-radius:12px; border:1px solid var(--line-strong); background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:12px; }
+  .chip { transition:background-color var(--fast) var(--ease-out-quart), color var(--fast) var(--ease-out-quart); }
+  .chip.on { background:var(--ink); color:var(--surface); }
+  .input { height:46px; width:100%; max-width:360px; border:1px solid var(--line-strong); border-radius:12px; padding:0 14px; font:16px var(--sans); background:var(--surface); color:var(--ink); }
+  .tile { width:64px; height:64px; border-radius:12px; border:1px solid var(--line-strong); background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:12px; }
   .tile.on { border:2px solid var(--ink); }
   .tile i { width:18px; height:18px; background:var(--ink); }
-  .btn { height:44px; padding:0 18px; border-radius:12px; border:2px solid var(--ink); font:500 14px var(--sans); background:#fff; color:var(--ink); }
-  .btn.primary { background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--ink); }
+  .btn { height:44px; padding:0 18px; border-radius:12px; border:2px solid var(--ink); font:500 14px var(--sans); background:var(--surface); color:var(--ink); cursor:pointer;
+    transition:translate var(--fast) var(--ease-out-quart), box-shadow var(--fast) var(--ease-out-quart), background-color var(--fast) var(--ease-out-quart); }
+  .btn:enabled:active { background:var(--chip); }
+  .btn.primary { background:var(--accent); color:var(--on-accent); box-shadow:4px 4px 0 var(--ink); }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn.primary:enabled:active { background:var(--accent); translate:4px 4px; box-shadow:0 0 0 var(--ink); }
+  }
   .btn[disabled] { opacity:.4; box-shadow:none; }
   .badge { border:1px dashed var(--warning); color:var(--warning); border-radius:999px; padding:1px 6px; font:500 10px/16px var(--sans); text-transform:uppercase; letter-spacing:.05em; }
   .bars { display:flex; gap:6px; height:48px; align-items:flex-end; width:260px; }
   .bars div { flex:1; border-radius:4px; background:var(--accent-soft); }
+  .sticker { width:120px; height:120px; border-radius:24px; border:3px solid var(--sticker-edge); background:var(--sticker); box-shadow:6px 6px 0 var(--ink); display:flex; align-items:center; justify-content:center; }
+  .sticker i { width:56px; height:56px; border-radius:8px; background:#111114; }
+  @keyframes settle { from { transform:translate(3px, 3px); box-shadow:4px 4px 0 var(--ink); } }
+  @keyframes callout-in { from { opacity:0; transform:translateY(-4px); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .sticker.play { animation:settle var(--slow) var(--ease-out-quart); }
+    .callout.play { animation:callout-in var(--base) var(--ease-out-quart); }
+  }
+  .callout { display:inline-flex; gap:8px; background:var(--warning-tint); padding:10px 14px; border-radius:12px; font-size:14px; }
+  .btn.danger { background:var(--danger); color:var(--on-danger); border-color:var(--ink); }
+  .btn.danger:enabled:active { background:var(--danger); opacity:.8; }
+  .btn.text { border:0; background:none; color:var(--ink-soft); padding:0 12px; }
+  .link-danger { color:var(--danger); font:500 14px var(--sans); display:inline-flex; align-items:center; gap:8px; }
+  .menu { width:280px; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:8px; font-size:14px; }
+  .menu .who { padding:8px 12px; } .menu .who small { display:block; color:var(--muted); font-size:12px; }
+  .menu hr { border:0; border-top:1px solid var(--line); margin:4px; }
+  .menu .item { height:40px; display:flex; align-items:center; gap:12px; padding:0 12px; border-radius:12px; color:var(--ink-soft); }
+  .pill { display:inline-flex; align-items:center; gap:10px; height:40px; padding:0 12px 0 4px; border-radius:999px; background:var(--chip); font-size:14px; color:var(--ink-soft); }
+  .pill b { width:32px; height:32px; border-radius:999px; background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:500; }
+  .stage { position:relative; height:260px; border-radius:16px; overflow:hidden; background:var(--paper); border:1px solid var(--line); }
+  .stage .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .dialog { position:absolute; left:50%; top:50%; translate:-50% -50%; width:min(400px, calc(100% - 32px)); background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; display:grid; gap:12px; font-size:14px; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--surface); border:1px solid var(--line); border-radius:16px 16px 0 0; padding:20px 16px 24px; display:grid; gap:12px; font-size:14px; }
+  .dialog h4, .sheet h4 { margin:0; font:800 20px/1.2 var(--display); letter-spacing:-0.025em; }
+  @keyframes dialog-in { from { opacity:0; transform:scale(.95); } }
+  @keyframes sheet-in { from { transform:translateY(100%); } }
+  @keyframes fade-in { from { opacity:0; } }
+  @keyframes step-in { from { opacity:0; transform:translateY(6px); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .dialog.play { animation:dialog-in var(--base) var(--ease-out-quart); }
+    .sheet.play { animation:sheet-in var(--slow) var(--ease-out-quart); }
+    .scrim.play { animation:fade-in var(--base) var(--ease-out-quart); }
+    .toast.play { animation:step-in var(--base) var(--ease-out-quart); }
+    .menu.play, .saved.play { animation:callout-in var(--base) var(--ease-out-quart); }
+  }
+  .toast { display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--surface); padding:12px 16px; border-radius:12px; font-size:14px; }
+  .saved { display:inline-flex; align-items:center; gap:8px; font-size:14px; }
+  .copy { display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:999px; background:var(--chip); font:500 14px var(--sans); color:var(--ink); border:0; }
+  .spark { display:flex; align-items:flex-end; gap:4px; width:60px; height:24px; }
+  .spark i { flex:1; border-radius:2px; background:var(--accent-soft); }
+  .spark i.peak { background:var(--accent); }
+  .spark.none i { height:1px; border-radius:0; background:var(--line-dashed); }
+  .chart { display:flex; align-items:flex-end; gap:4px; height:160px; padding-top:20px; border-bottom:1px solid var(--line); }
+  .chart div { flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; font-size:12px; font-weight:500; }
+  .chart div i { width:100%; border-radius:2px 2px 0 0; background:var(--accent-soft); flex-shrink:0; }
+  .chart div.peak i { background:var(--accent); }
+  .axis { display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); margin-top:8px; }
+  .meter { display:grid; gap:8px; font-size:14px; margin-bottom:14px; }
+  .meter span { display:flex; justify-content:space-between; }
+  .meter span em { font-style:normal; color:var(--ink-soft); }
+  .meter i { height:6px; border-radius:999px; background:var(--accent-soft); }
+  .listrow { display:flex; align-items:center; gap:16px; padding:16px 24px; border-top:1px solid var(--line); font-size:14px; }
+  .listrow:first-child { border-top:0; }
+  .thumb { width:48px; height:48px; border-radius:8px; border:1px solid var(--line-strong); background:var(--sticker); padding:4px; flex-shrink:0; }
+  .thumb i { display:block; width:100%; height:100%; border-radius:4px; background:repeating-conic-gradient(#111114 0 25%, #FFFFFF 0 50%) 0 0/8px 8px; }
+  .toggle { display:flex; gap:12px; align-items:flex-start; background:var(--accent-tint); padding:14px; border-radius:12px; max-width:400px; font-size:14px; }
+  .toggle .track { width:36px; height:22px; border-radius:999px; background:var(--accent); display:flex; justify-content:flex-end; align-items:center; padding:0 3px; flex-shrink:0; }
+  .toggle .track i { width:16px; height:16px; border-radius:999px; background:var(--on-accent); }
+  .alert { display:flex; gap:10px; align-items:flex-start; font-size:14px; }
+  .alert b { color:var(--danger); font-weight:500; display:block; }
   table { border-collapse:collapse; width:100%; font-size:14px; }
   td, th { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { color:var(--muted); font-weight:500; }
@@ -57,12 +138,15 @@
 </head>
 <body>
 <main>
-  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.0</span></h1>
-  <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>.</p>
+  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.3</span></h1>
+  <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>. Designs: Brilliant project <code>qr-daddy</code>, canvases “QR Daddy — Final” and “QR Daddy — Account”.</p>
+  <p><b style="color:var(--ink)">Product rule.</b> Making and downloading a static code never needs an account. Only turning on Dynamic asks for one, and it explains the benefit (change where the code points after printing, see its scans) instead of blocking. Signing in is a benefit, never a gate.</p>
 
   <h2>1. Design tokens</h2>
   <h3>Colour</h3>
+  <p>Each swatch shows light on the left, dark on the right. Dark follows the system setting, and so does this page. Ink flips to a light grey, so ink borders and hard shadows become light edges on a dark page. Stickers keep their light colours (white face, ink edge) so codes stay dark on white. <code>on-accent</code> is white in both, for text on cobalt.</p>
   <div class="grid" id="colours"></div>
+  <p>Dark contrast: ink on surface 14.5:1, ink-soft 8.3:1, muted 6.1:1, danger 6.2:1, warning 8.3:1, white on accent 5.9:1, on-danger (#131315) on danger (#FF6B7D) 6.8:1. Light: white on danger 5.9:1. <code>on-danger</code> turns dark in dark mode because white on the light dark-mode red fails contrast.</p>
 
   <h3>QR palette</h3>
   <div class="grid" id="qr"></div>
@@ -82,15 +166,16 @@
   </div>
 
   <h3>Spacing, radius, shadow</h3>
-  <p>4px scale. Gutter 16px phones / 40px desktop. Radius 12 inputs and buttons, 16 panels, 24 stickers, full chips.</p>
+  <p>Content frame: page sections use <code>mx-auto w-full max-w-page</code> (80rem = 1280px, gutters inside), so content is at most 1200px wide. 4px scale. Gutter 16px phones / 40px desktop. Radius 12 inputs and buttons, 16 panels, 24 stickers, full chips.</p>
   <div class="flex">
     <div class="shadow-box" style="box-shadow:4px 4px 0 var(--ink)">hard-sm · 4</div>
     <div class="shadow-box" style="box-shadow:6px 6px 0 var(--ink)">hard · 6</div>
     <div class="shadow-box" style="box-shadow:8px 8px 0 var(--ink)">hard-lg · 8</div>
+    <div class="shadow-box" style="box-shadow:0 0 0 var(--ink)">hard-pressed · 0</div>
   </div>
 
   <h2>2. Iconography</h2>
-  <p>Phosphor (<code>@phosphor-icons/react</code>), regular weight, 18–24px: List, X, ArrowLeft, UploadSimple, WarningCircle. No other icon set.</p>
+  <p>Phosphor (<code>@phosphor-icons/react</code>, <code>/dist/ssr</code> in server components), regular weight, 14–24px: List, X, ArrowLeft, ArrowRight, UploadSimple, WarningCircle, CaretDown, CaretRight, SignOut, Plus, Copy, Check, CheckCircle, DownloadSimple, Trash, EnvelopeSimple, DeviceMobile, Desktop, DeviceTablet, Question. No other icon set.</p>
 
   <h2>3. Layout</h2>
   <table>
@@ -98,6 +183,12 @@
     <tr><td>&lt; 768px</td><td>Nav 60px → hero → generator as three steps (preview on top, step buttons pinned to the bottom) → stacked cards</td></tr>
     <tr><td>≥ 768px</td><td>Nav 72px → hero → generator (controls 440px, preview fills) → three cards</td></tr>
     <tr><td>≥ 1024px</td><td>Hero sticker collage (520 × 400) appears</td></tr>
+  </table>
+  <table style="margin-top:16px">
+    <tr><th>Screen</th><th>Layout</th></tr>
+    <tr><td>/sign-in</td><td>One 440px column, 112px under the nav on desktop (28px on phones). Nav: wordmark and “Make a free code” only</td></tr>
+    <tr><td>/app</td><td>Title + count line, “New code” right (full width on phones) → one panel with the list, or the empty state</td></tr>
+    <tr><td>/app/codes/[id]</td><td>Back link, title, short link + Copy → left 444px (sticker + downloads, Points to, Delete) and right (stats, scans per day, countries + devices). Phones: one column, Delete last</td></tr>
   </table>
 
   <h2>4. Components</h2>
@@ -115,46 +206,182 @@
   </div>
 
   <h3>Buttons</h3>
-  <div class="flex"><button class="btn">SVG</button><button class="btn primary">Download PNG</button><button class="btn primary" disabled>Download PNG</button></div>
+  <div class="flex"><button class="btn">SVG</button><button class="btn">PDF</button><button class="btn primary">Download PNG</button><button class="btn primary" disabled>Download PNG</button></div>
+  <div class="flex" style="margin-top:12px"><button class="btn">Keep it</button><button class="btn danger">Delete code</button><button class="btn text">Cancel</button><span class="link-danger">🗑 Delete this code</span></div>
+  <p>Shared class strings in <code>components/ui/buttons.ts</code>: primary, secondary, danger (only inside a confirm dialog; <code>on-danger</code> text, no shadow, pressed 80% opacity) and text (“Cancel”). Step 3 downloads: SVG and PDF (secondary), then PNG (primary). PDF is vector, 10 cm square with the quiet zone. In the phone bar the primary reads “PNG” so four buttons fit at 360px; screen readers still hear “Download PNG”.</p>
+  <p>Press and hold: primary moves 4px into its shadow, secondary takes the chip colour.</p>
+
+  <h3>Dynamic toggle (Link only, no Dev badge)</h3>
+  <div class="toggle"><span class="track"><i></i></span><span><b style="font-weight:500">Dynamic</b><br><span style="color:var(--ink-soft)">Change where it points any time and see who scans.</span>
+    <span style="display:block;border-top:1px solid var(--accent-soft);margin-top:12px;padding-top:12px;color:var(--ink)">Dynamic codes need a free account. You can change where the code points after printing and see how many people scan it. Your code still downloads as a regular one without it.<br><u style="font-weight:500">Sign in with your email →</u></span></span></div>
+  <p>The callout shows only when a signed-out user turns it on; the static code stays fully downloadable and the draft survives the sign-in trip. Signed in, the code encodes a short link made on the first download, and step 3 adds “Short link <b style="color:var(--ink)">q.ashiangmor.com/abc123</b> · Edit and see scans →”.</p>
+
+  <h3>Account menu</h3>
+  <div class="flex" style="align-items:flex-start; gap:24px">
+    <div style="display:grid; gap:8px; justify-items:end">
+      <span class="pill"><b>A</b>ama@kofi-chops.com ▾</span>
+      <div class="menu" id="menu"><div class="who"><small>Signed in as</small>ama@kofi-chops.com</div><hr><div class="item">⇥ Sign out</div></div>
+    </div>
+    <div class="stage" style="width:280px">
+      <div style="height:52px;background:var(--surface);border-bottom:1px solid var(--line)"></div>
+      <div class="scrim" style="top:52px" id="menuscrim"></div>
+      <div class="menu" style="position:absolute;top:52px;left:0;right:0;width:auto;border-radius:0;border-width:1px 0">
+        <div class="item">Create</div><div class="item" style="background:var(--chip);color:var(--ink);font-weight:500">Your codes</div><hr>
+        <div class="who"><small>Signed in as</small>ama@kofi-chops.com</div><div class="item">⇥ Sign out</div>
+      </div>
+    </div>
+  </div>
+  <p>Desktop: dropdown, 280px, <code>rounded-2xl</code>, 1px line border, no shadow; closes on Escape or a press outside. Phone: the hamburger opens a sheet under the nav with the page behind on <code>scrim</code>.</p>
+
+  <h3>Dialog and bottom sheet</h3>
+  <div class="flex" style="align-items:flex-start">
+    <div class="stage" style="flex:1; min-width:280px"><div class="scrim" id="dscrim"></div>
+      <div class="dialog" id="dialog"><h4>Delete this code?</h4><span style="color:var(--ink-soft)">Kofi's Chop Bar menu stops working straight away. Anyone who scans a printed copy will see a page saying the code no longer works. You can't undo this.</span>
+        <div class="flex" style="justify-content:flex-end"><button class="btn">Keep it</button><button class="btn danger">Delete code</button></div></div></div>
+    <div class="stage" style="width:280px"><div class="scrim" id="sscrim"></div>
+      <div class="sheet" id="sheet"><h4>Delete this code?</h4><span style="color:var(--ink-soft)">It stops working straight away. You can't undo this.</span>
+        <button class="btn danger" style="width:100%">Delete code</button><button class="btn" style="width:100%">Keep it</button></div></div>
+  </div>
+  <p>Native <code>&lt;dialog&gt;</code> (focus trap, Escape, top layer); backdrop click closes. Desktop centred 440px; phones a full-width bottom sheet with Delete first.</p>
+
+  <h3>Toast, saved, copied</h3>
+  <div class="flex" style="gap:24px">
+    <span class="toast" id="toast">✓ Code deleted. Its short link has stopped working.</span>
+    <span class="saved" id="saved">✓ Saved. Scans now open the new link.</span>
+    <button class="copy">⧉ Copy</button><button class="copy">✓ Copied</button>
+  </div>
+  <p>Toast: bottom-centre ink pill, <code>role="status"</code>, gone after 4 seconds. Editing Points to shows Save + Cancel + “Was kofi-chops.com/menu”. Copied lasts 2 seconds.</p>
+
+  <h3>Sign-in states</h3>
+  <table>
+    <tr><th>State</th><th>What shows</th></tr>
+    <tr><td>Default</td><td>“Sign in.” + email + “Email me a sign-in link”, then what an account gives and that regular codes stay free without one</td></tr>
+    <tr><td>Check your email</td><td>“We sent a sign-in link to <b>email</b>. It works for 15 minutes.” + “Send it again” + “Wrong email? Use a different one”</td></tr>
+    <tr><td>Link expired or used</td><td><div class="alert"><span style="color:var(--danger)">ⓘ</span><span><b>That sign-in link has expired or was already used.</b>Each link works once, within 15 minutes. Send yourself a new one below.</span></div> Email prefilled, “Email me a new link”.</td></tr>
+    <tr><td>Rate-limited, bad email, send failure</td><td><span style="color:var(--danger)">ⓘ We've sent a few links already. Check your inbox, or try again in 15 minutes.</span></td></tr>
+  </table>
+
+  <h3>List rows</h3>
+  <div class="panel" style="padding:0; overflow-x:auto">
+    <div class="listrow" style="color:var(--ink-soft);font-size:12px"><span style="flex:1;padding-left:64px">Code</span><span style="width:200px">Points to</span><span style="width:120px">Scans, last 7 days</span><span style="width:90px">Last scanned</span></div>
+    <div class="listrow"><span class="thumb"><i></i></span><span style="flex:1"><b style="font-weight:500">Kofi's Chop Bar menu</b><br><span style="color:var(--ink-soft)">q.ashiangmor.com/d4dy</span></span><span style="width:200px;color:var(--ink-soft)">kofi-chops.com/menu</span><span style="width:120px;display:flex;gap:16px;align-items:center"><b style="font:800 18px var(--display)">412</b><span class="spark" id="spark1"></span></span><span style="width:90px;color:var(--ink-soft)">2 min ago</span></div>
+    <div class="listrow"><span class="thumb"><i></i></span><span style="flex:1"><b style="font-weight:500">Christmas catering form</b><br><span style="color:var(--ink-soft)">q.ashiangmor.com/x8cc</span></span><span style="width:200px;color:var(--ink-soft)">forms.gle/kofi-xmas</span><span style="width:120px;display:flex;gap:16px;align-items:center"><b style="font:800 18px var(--display)">0</b><span class="spark none" id="spark2"></span></span><span style="width:90px;color:var(--ink-soft)">Not yet</span></div>
+  </div>
+  <p>Thumbnail: a real render of the code in its saved style on a white face. Phones stack name, short link and “→ destination” with count, sparkline and last scanned on the right. Empty state: ghost code, “No dynamic codes yet.”, three numbered steps and “New code”.</p>
+
+  <h3>Charts</h3>
+  <p><b style="color:var(--ink)">Only the busiest day is cobalt.</b> Every other bar is accent-soft. Today carries its count but stays accent-soft. The sparkline follows the same rule; no scans draws dashes.</p>
+  <div class="panel">
+    <div class="chart" id="chart"></div>
+    <div class="axis"><span>30 Sep</span><span>15 Oct</span><span>Today</span></div>
+  </div>
+  <div class="panel" style="margin-top:12px; max-width:420px">
+    <div class="meter"><span>Ghana<em>2,604 · 89%</em></span><i style="width:89%"></i></div>
+    <div class="meter"><span>Nigeria<em>142 · 5%</em></span><i style="width:5%"></i></div>
+    <div class="meter"><span>United Kingdom<em>98 · 3%</em></span><i style="width:3%"></i></div>
+  </div>
+  <p>Meters: label left, “count · share” right, a 6px accent-soft bar as wide as the share. Stat row: Total scans, Last 7 days, Today so far in the display face.</p>
 
   <h3>States</h3>
   <table>
     <tr><th>State</th><th>What shows</th></tr>
-    <tr><td>Empty</td><td>Ghost code in #E4E4DF + “Paste a link to see your code.”</td></tr>
+    <tr><td>Empty</td><td>Ghost code in <code>ghost</code> + “Paste a link to see your code.”</td></tr>
     <tr><td>Too long</td><td><span style="color:var(--danger)">●</span> “That's too much to fit in one QR code. Make it shorter.” Downloads disabled.</td></tr>
     <tr><td>Logo file too big</td><td>“That logo file is too big. Use one under 2 MB.”</td></tr>
     <tr><td>Colour too light</td><td><span style="display:inline-block;background:var(--warning-tint);padding:6px 10px;border-radius:12px"><span style="color:var(--warning)">●</span> “This colour is too light for some phones to read. Pick a darker one.”</span> Under 3:1 contrast with white. Downloads stay enabled.</td></tr>
   </table>
 
   <h3>Dev badge</h3>
-  <div class="flex"><span>Dynamic codes</span><span class="badge">Dev</span></div>
+  <div class="flex"><span>Pricing</span><span class="badge">Dev</span><span style="margin-left:16px">MoMo</span><span class="badge">Dev</span></div>
+  <p>Since v1.2 only Pricing and the MoMo chip are unreleased. Dynamic codes, sign-in, Your codes and the analytics proof cards ship without a badge.</p>
 
   <h3>Proof chart</h3>
   <div class="bars" id="bars"></div>
 
-  <h2>5. Micro-interactions</h2>
-  <p>None yet.</p>
+  <h2>5. Motion</h2>
+  <p>Motion only answers the user. Nothing loops, nothing bounces, nothing moves on a keystroke. CSS only. Everything that moves sits behind <code>motion-safe:</code>, so reduced motion gets no movement; colour fades stay.</p>
+  <h3>Tokens</h3>
+  <table>
+    <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+    <tr><td><code>ease-out-quart</code></td><td>cubic-bezier(0.165, 0.84, 0.44, 1)</td><td>Responses, small entrances</td></tr>
+    <tr><td><code>ease-out-quint</code></td><td>cubic-bezier(0.23, 1, 0.32, 1)</td><td>Hero entrance</td></tr>
+    <tr><td><code>duration-fast</code></td><td>120ms</td><td>Colour changes, button press</td></tr>
+    <tr><td><code>duration-base</code></td><td>180ms</td><td>Callouts, phone steps, step bar</td></tr>
+    <tr><td><code>duration-slow</code></td><td>240ms</td><td>QR sticker settle</td></tr>
+    <tr><td><code>duration-entrance</code></td><td>500ms</td><td>Hero stickers, once</td></tr>
+    <tr><td><code>enter-delay-*</code></td><td>n × 80ms</td><td>Hero stagger</td></tr>
+    <tr><td><code>animate-fade-in</code></td><td>opacity · base · quart</td><td>Phone menu scrim</td></tr>
+    <tr><td><code>dialog-motion</code></td><td>@utility</td><td>Native &lt;dialog&gt; enter and exit via @starting-style and allow-discrete; exits faster than enters</td></tr>
+  </table>
+  <h3>Inventory</h3>
+  <table>
+    <tr><th>Element</th><th>What moves</th><th>Timing</th><th>Reduced motion</th></tr>
+    <tr><td>Chips, tiles, swatches</td><td>Colour, border, selection ring</td><td>fast · quart</td><td>Same</td></tr>
+    <tr><td>QR preview sticker</td><td>On pattern, colour or logo change and when the code appears: starts 3px pressed into a 4px shadow, settles</td><td>slow · quart</td><td>None</td></tr>
+    <tr><td>Phone steps</td><td>New step fades in, rises 6px</td><td>base · quart</td><td>None</td></tr>
+    <tr><td>Phone step bar</td><td>Segment colour</td><td>base · quart</td><td>Same</td></tr>
+    <tr><td>Primary button</td><td>Press: 4px into its shadow, shadow to zero</td><td>fast · quart</td><td>None</td></tr>
+    <tr><td>Secondary button</td><td>Press: chip colour</td><td>fast · quart</td><td>Same</td></tr>
+    <tr><td>Hero stickers</td><td>Fade in, rise 16px, 80ms apart</td><td>entrance · quint</td><td>None</td></tr>
+    <tr><td>Warning, too-long, logo error</td><td>Fade in, drop 4px</td><td>base · quart</td><td>None</td></tr>
+    <tr><td>Dynamic toggle</td><td>Track colour</td><td>fast · quart</td><td>Same</td></tr>
+    <tr><td>Dialog (desktop)</td><td>Fade + scale 0.95 → 1; exit reverses; backdrop fades</td><td>enter base, exit fast · quart</td><td>None</td></tr>
+    <tr><td>Bottom sheet (phone)</td><td>Slides up from below; exit slides down</td><td>enter slow, exit fast · quart</td><td>None</td></tr>
+    <tr><td>Account dropdown, phone menu</td><td>Fade in, drop 4px (callout-in); closes instantly</td><td>base · quart</td><td>None</td></tr>
+    <tr><td>Phone menu scrim</td><td>Fade in</td><td>base · quart</td><td>None</td></tr>
+    <tr><td>Toast, “Check your email”</td><td>Fade in, rise 6px (step-in)</td><td>base · quart</td><td>None</td></tr>
+    <tr><td>Saved, copied, error, short-link lines</td><td>Fade in, drop 4px (callout-in)</td><td>base · quart</td><td>None</td></tr>
+  </table>
+  <h3>Try it</h3>
+  <div class="flex" style="gap:32px">
+    <div class="sticker" id="sticker"><i></i></div>
+    <span class="callout" id="callout"><span style="color:var(--warning)">●</span> This colour is too light for some phones to read.</span>
+  </div>
+  <p><button class="btn" id="replay">Replay settle and callout</button> <button class="btn" id="replay2">Replay dialog, sheet, menu and toast</button></p>
 
   <h2>6. Implementation notes</h2>
-  <p>No hex literals or arbitrary values in components; add a token first. Touch targets 44px, inputs 16px on phones. Error copy says what happened, then what to do.</p>
+  <p>No hex literals or arbitrary values in components; add a token first, with a dark value. Touch targets 44px, inputs 16px on phones. Error copy says what happened, then what to do. Route handlers answer <code>{ message, details? }</code> in plain copy and the client shows both. Chart bar heights and meter widths may be inline styles (data-driven).</p>
 
   <h2>Changelog</h2>
+  <p><b>v1.3 · 2026-10-29</b> Content frame: page sections capped at max-w-page (1280px incl. gutters) and centred.</p>
+  <p><b>v1.2 · 2026-10-29</b> Account surfaces from “QR Daddy — Account”: sign-in states, Your codes (rows, empty state, sparkline), code detail (stats, scans per day, meters, Points to, copy, downloads), delete dialog / bottom sheet, toast, account menu (dropdown and phone sheet with scrim). New tokens on-danger, scrim, animate-fade-in and the dialog-motion utility; shared primary, secondary, danger and text buttons. Only the busiest day is cobalt. Dynamic toggle is real (Link only); Dev badge left on Pricing and MoMo. Product rule: static codes never need an account.</p>
+  <p><b>v1.1 · 2026-10-29</b> Dark mode for every token, sticker and on-accent tokens, ghost replaces the placeholder hex; motion tokens and the first motion pass. PDF download (secondary button next to SVG); phone step bar shows the primary as “PNG”.</p>
   <p><b>v1.0 · 2026-10-28</b> First version, from the merge of directions A and B without B's yellow.</p>
 </main>
 <script>
   const colours = [
-    ["paper","#F7F7F5","Page background"],["surface","#FFFFFF","Panels, inputs, stickers"],["surface-sunken","#FBFBFA","Preview well"],
-    ["chip","#F1F1EE","Unselected chips"],["ink","#111114","Text, selection, hard shadows"],["ink-soft","#55555C","Secondary text"],
-    ["muted","#6B6B72","Captions"],["line","#E6E6E1","Panel borders"],["line-strong","#D9D9D3","Input borders"],
-    ["line-dashed","#CFCFC8","Logo drop zone"],["accent","#2B4BFF","Primary action only"],["accent-tint","#EEF1FF","Dynamic row"],
-    ["accent-soft","#DDE3FF","Chart bars"],["danger","#C8102E","Errors"],["warning","#B45309","Warnings, Dev badge"],["warning-tint","#FFF4E5","Warning callout"]];
-  const qr = [["Ink","#111114"],["Cobalt","#2B4BFF"],["Forest","#0F7B55"],["Clay","#C2410C"],["Slate","#6B6B72"],["Placeholder","#E4E4DF"]];
-  const card = (name, hex, use) => `<div class="swatch"><div style="background:${hex}"></div><span>${name}</span><small>${hex}${use ? " · " + use : ""}</small></div>`;
+    ["paper","#F7F7F5","#131315","Page background"],["surface","#FFFFFF","#1C1C1F","Panels, inputs"],["surface-sunken","#FBFBFA","#171719","Preview well"],
+    ["chip","#F1F1EE","#2A2A2E","Unselected chips"],["ink","#111114","#EDEDE8","Text, selection, hard shadows"],["ink-soft","#55555C","#B4B4BB","Secondary text"],
+    ["muted","#6B6B72","#9A9AA2","Captions"],["line","#E6E6E1","#2C2C30","Panel borders"],["line-strong","#D9D9D3","#3C3C41","Input borders"],
+    ["line-dashed","#CFCFC8","#4C4C52","Logo drop zone"],["ghost","#E4E4DF","#2E2E33","Empty-state code"],["swatch-edge","transparent","#4C4C52","Swatch ring"],
+    ["accent","#2B4BFF","#2B4BFF","Primary action only"],["on-accent","#FFFFFF","#FFFFFF","Text on accent"],["accent-tint","#EEF1FF","#1B2042","Dynamic row"],
+    ["accent-soft","#DDE3FF","#242D66","Chart bars"],["sticker","#FFFFFF","#FFFFFF","Sticker face"],["sticker-tint","#DDE3FF","#DDE3FF","Soft hero sticker"],
+    ["sticker-edge","#111114","#111114","Sticker border"],["danger","#C8102E","#FF6B7D","Errors, danger button"],["on-danger","#FFFFFF","#131315","Text on danger"],["warning","#B45309","#F0A54A","Warnings, Dev badge"],["warning-tint","#FFF4E5","#2D2114","Warning callout"],
+    ["scrim","#11111466","#000000A3","Behind dialogs, sheets, phone menu"]];
+  const qr = [["Ink","#111114"],["Cobalt","#2B4BFF"],["Forest","#0F7B55"],["Clay","#C2410C"],["Slate","#6B6B72"],["Tint","#DDE3FF"]];
+  const card = (name, light, dark, use) => `<div class="swatch"><div class="halves"><i style="background:${light}"></i><i style="background:${dark}"></i></div><span>${name}</span><small>${light === dark ? light : light + " / " + dark}${use ? " · " + use : ""}</small></div>`;
   document.getElementById("colours").innerHTML = colours.map(c => card(...c)).join("");
-  document.getElementById("qr").innerHTML = qr.map(c => card(c[0], c[1])).join("");
+  document.getElementById("qr").innerHTML = qr.map(c => card(c[0], c[1], c[1], "same in both modes")).join("");
   document.getElementById("dots").innerHTML = qr.slice(0, 5).map((c, i) =>
-    `<span style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;${i === 0 ? "border:2px solid var(--ink)" : ""}"><span style="width:26px;height:26px;border-radius:999px;background:${c[1]}"></span></span>`).join("");
+    `<span style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid ${i === 0 ? "var(--ink)" : "transparent"}"><span style="width:26px;height:26px;border-radius:999px;background:${c[1]};box-shadow:0 0 0 1px var(--swatch-edge)"></span></span>`).join("");
   document.getElementById("bars").innerHTML = [14,22,18,29,25,48,36].map((h, i) => `<div style="height:${h}px;${i === 5 ? "background:var(--accent)" : ""}"></div>`).join("");
+  const days = [9,11,20,22,14,8,9,8,11,21,24,17,10,10,9,12,22,25,16,12,13,12,14,23,28,19,15,16,15,13];
+  const peak = days.lastIndexOf(Math.max(...days)), max = days[peak];
+  document.getElementById("chart").innerHTML = days.map((d, i) =>
+    `<div class="${i === peak ? "peak" : ""}">${i === peak || i === days.length - 1 ? d : ""}<i style="height:${d / max * 100}%"></i></div>`).join("");
+  const week = [40, 72, 55, 61, 58, 66, 50], wpeak = week.indexOf(Math.max(...week));
+  document.getElementById("spark1").innerHTML = week.map((d, i) => `<i class="${i === wpeak ? "peak" : ""}" style="height:${d}%"></i>`).join("");
+  document.getElementById("spark2").innerHTML = "<i></i>".repeat(7);
+  document.getElementById("replay2").addEventListener("click", () => {
+    for (const id of ["dialog", "sheet", "dscrim", "sscrim", "menu", "menuscrim", "toast", "saved"]) {
+      const el = document.getElementById(id); el.classList.remove("play"); void el.offsetWidth; el.classList.add("play");
+    }
+  });
+  document.getElementById("replay").addEventListener("click", () => {
+    for (const el of [document.getElementById("sticker"), document.getElementById("callout")]) {
+      el.classList.remove("play"); void el.offsetWidth; el.classList.add("play");
+    }
+  });
 </script>
 </body>
 </html>

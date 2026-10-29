@@ -1,0 +1,39 @@
+// The web app (qr.ashiangmor.com) on Cloudflare Workers through the OpenNext adapter.
+// `pnpm cf:build` builds it into .open-next/; `pnpm cf-typegen` regenerates cloudflare-env.d.ts.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "qr-daddy-web",
+  "main": ".open-next/worker.js",
+  // Same as apps/go: the newest date the pinned workerd (1.20261019) supports.
+  "compatibility_date": "2026-10-19",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "routes": [{ "pattern": "qr.ashiangmor.com", "custom_domain": true }],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // The same database and namespace as apps/go: the app writes codes, the redirect Worker reads them.
+  // Locally both use the shared state in ../../.wrangler/state (see CLAUDE.md).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qr-daddy-db",
+      // Same id as apps/go/wrangler.jsonc. Keep the two equal: local state is keyed by it.
+      "database_id": "f2be6785-1840-4d96-97f1-08b71cfac06e",
+      "migrations_dir": "../../packages/core/migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "LINKS",
+      // KV namespace "qr-daddy-links", the same id as apps/go.
+      "id": "dfa089e80e1c48899bbf93e1516dc6bf"
+    }
+  ],
+  // Sign-in emails go through Resend. Set the key with
+  // `wrangler secret put RESEND_API_KEY`; locally the link is printed instead.
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  }
+}

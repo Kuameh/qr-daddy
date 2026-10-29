@@ -3,7 +3,7 @@ import type { ContentType, Fields } from "./content";
 
 type Update = <T extends ContentType>(type: T, patch: Partial<Fields[T]>) => void;
 
-const inputClass =
+export const inputClass =
 	"h-12 w-full rounded-xl border border-line-strong bg-surface px-3.5 text-base outline-none focus:border-ink md:h-11.5";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

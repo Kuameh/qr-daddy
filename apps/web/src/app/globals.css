@@ -18,16 +18,34 @@
 	--color-line: #E6E6E1;
 	--color-line-strong: #D9D9D3;
 	--color-line-dashed: #CFCFC8;
+	--color-ghost: #E4E4DF;
+	/* Outline on colour swatches; only needed in dark, where the Ink swatch meets a dark panel. */
+	--color-swatch-edge: transparent;
 
 	/* The one accent: cobalt. Primary action, active step, the dynamic feature. */
 	--color-accent: #2B4BFF;
+	--color-on-accent: #FFFFFF;
 	--color-accent-tint: #EEF1FF;
 	--color-accent-soft: #DDE3FF;
 
+	/* Stickers are printed objects: same colours in light and dark, so codes stay dark on white. */
+	--color-sticker: #FFFFFF;
+	--color-sticker-tint: #DDE3FF;
+	--color-sticker-edge: #111114;
+
 	/* Feedback. */
 	--color-danger: #C8102E;
+	/* Text on a danger button. */
+	--color-on-danger: #FFFFFF;
 	--color-warning: #B45309;
 	--color-warning-tint: #FFF4E5;
+
+	/* Dims the page behind dialogs, sheets and the phone menu. */
+	--color-scrim: #11111466;
+
+	/* Layout: every page section sits in one centred frame (`mx-auto max-w-page`) so wide
+	   screens don't stretch content edge to edge. The gutters stay inside it. */
+	--container-page: 80rem;
 
 	/* Type: Geist for everything you read, Bricolage Grotesque for the loud moments. */
 	--font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
@@ -52,10 +70,175 @@
 	--shadow-hard-sm: 4px 4px 0 var(--color-ink);
 	--shadow-hard: 6px 6px 0 var(--color-ink);
 	--shadow-hard-lg: 8px 8px 0 var(--color-ink);
+	/* A pressed primary button sits on its shadow. Zero offset, still ink, so the press is a slide, not a fade. */
+	--shadow-hard-pressed: 0 0 0 var(--color-ink);
+
+	/*
+	 * Motion. Ease-out for everything that enters or responds; nothing loops or bounces.
+	 * Utilities: ease-out-quart, duration-fast, animate-settle. Every animate-* is used
+	 * behind motion-safe: so reduced motion gets no movement.
+	 */
+	--ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+	--ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+
+	--transition-duration-fast: 120ms;
+	--transition-duration-base: 180ms;
+	--transition-duration-slow: 240ms;
+	--transition-duration-entrance: 500ms;
+
+	--animate-settle: settle var(--transition-duration-slow) var(--ease-out-quart);
+	--animate-step-in: step-in var(--transition-duration-base) var(--ease-out-quart);
+	--animate-callout-in: callout-in var(--transition-duration-base) var(--ease-out-quart);
+	--animate-fade-in: fade-in var(--transition-duration-base) var(--ease-out-quart);
+
+	/*
+	 * The QR sticker re-stamps when its style changes: it starts pressed into its shadow.
+	 * The shadow list mirrors Tailwind's shadow-* composition so each layer interpolates
+	 * against its partner instead of crossfading.
+	 */
+	@keyframes settle {
+		from {
+			transform: translate(3px, 3px);
+			box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--shadow-hard-sm);
+		}
+	}
+	@keyframes step-in {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+	}
+	@keyframes callout-in {
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+	}
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+	}
+}
+
+/*
+ * Hero sticker entrance, once on load. A utility rather than an --animate-* token because
+ * its delay comes from the element (enter-delay-*): a theme variable would resolve
+ * --enter-delay on :root, where it is never set.
+ */
+@utility animate-sticker-in {
+	animation: sticker-in var(--transition-duration-entrance) var(--ease-out-quint) var(--enter-delay, 0s) both;
+}
+@keyframes sticker-in {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+}
+
+/*
+ * Native <dialog> (components/ui/dialog.tsx): a centred dialog on desktop, a bottom sheet on
+ * phones. Enter and exit both animate: @starting-style gives the enter its first frame, and
+ * overlay/display allow-discrete keep the dialog in the top layer while it exits. Exits run
+ * at duration-fast, enters at base (dialog) or slow (sheet, it travels further).
+ * Reduced motion: no transitions, the dialog just appears and disappears.
+ */
+@utility dialog-motion {
+	&::backdrop {
+		background: var(--color-scrim);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		transition-property: opacity, transform, overlay, display;
+		transition-behavior: allow-discrete;
+		transition-duration: var(--transition-duration-fast);
+		transition-timing-function: var(--ease-out-quart);
+		transform: translateY(100%);
+		&[open] {
+			transform: none;
+			transition-duration: var(--transition-duration-slow);
+		}
+		@starting-style {
+			&[open] {
+				transform: translateY(100%);
+			}
+		}
+		@media (width >= 48rem) {
+			opacity: 0;
+			transform: scale(0.95);
+			&[open] {
+				opacity: 1;
+				transform: none;
+				transition-duration: var(--transition-duration-base);
+			}
+			@starting-style {
+				&[open] {
+					opacity: 0;
+					transform: scale(0.95);
+				}
+			}
+		}
+		&::backdrop {
+			opacity: 0;
+			transition-property: opacity, overlay, display;
+			transition-behavior: allow-discrete;
+			transition-duration: var(--transition-duration-fast);
+			transition-timing-function: var(--ease-out-quart);
+		}
+		&[open]::backdrop {
+			opacity: 1;
+			transition-duration: var(--transition-duration-base);
+		}
+		@starting-style {
+			&[open]::backdrop {
+				opacity: 0;
+			}
+		}
+	}
+}
+
+/* Staggers entrances: enter-delay-1 starts one step (80ms) after enter-delay-0. */
+@utility enter-delay-* {
+	--enter-delay: calc(--value(integer) * 80ms);
+}
+
+/*
+ * Dark mode follows the system setting. Same token names, new values: ink flips to a
+ * light warm grey, so ink borders and hard shadows read as light edges on a dark page.
+ * Sticker colours and on-accent stay put.
+ */
+@layer base {
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--color-paper: #131315;
+			--color-surface: #1C1C1F;
+			--color-surface-sunken: #171719;
+			--color-chip: #2A2A2E;
+
+			--color-ink: #EDEDE8;
+			--color-ink-soft: #B4B4BB;
+			--color-muted: #9A9AA2;
+			--color-line: #2C2C30;
+			--color-line-strong: #3C3C41;
+			--color-line-dashed: #4C4C52;
+			--color-ghost: #2E2E33;
+			--color-swatch-edge: #4C4C52;
+
+			--color-accent-tint: #1B2042;
+			--color-accent-soft: #242D66;
+
+			--color-danger: #FF6B7D;
+			--color-on-danger: #131315;
+			--color-warning: #F0A54A;
+			--color-warning-tint: #2D2114;
+
+			--color-scrim: #000000A3;
+		}
+	}
 }
 
 @layer base {
 	html {
+		color-scheme: light dark;
 		background: var(--color-paper);
 		color: var(--color-ink);
 		-webkit-font-smoothing: antialiased;
