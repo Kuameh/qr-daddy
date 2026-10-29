@@ -1,4 +1,4 @@
-# QR Daddy design system · v1.3
+# QR Daddy design system · v1.4
 
 QR Daddy is a calm tool with a loud voice. The working surface (the generator) is
 neutral, precise and quiet, like Linear. Personality lives in a few deliberate places:
@@ -293,6 +293,20 @@ animate `transform`/`opacity` (the sticker settle also animates its shadow, one 
 - Error copy follows the plain-language rule: what happened, then what to do. Route handlers answer `{ message, details? }` in plain copy; the client shows both (`getApiErrorText`). No connection: "We couldn't reach QR Daddy. Check your internet connection and try again." Anything else that breaks: "Something went wrong on our side. Try again in a minute."
 - Data-driven inline styles are allowed for chart bar heights and meter widths, like swatch colours.
 
+## Email
+
+Templates live in `emails/` and are published in Resend (alias = file name, e.g. `sign-in-link`).
+Email clients ignore CSS variables, `box-shadow` (Gmail) and most layout CSS, so emails are the
+one place hex values are written out, inline, from this palette: `paper` #F7F7F5 page,
+`surface` #FFFFFF card with 1px `line` #E6E6E1 and 16px radius, `ink` #111114 headings,
+`ink-soft` #55555C body, `muted` #6B6B72 small print, `accent` #2B4BFF links and the button.
+
+- Width 520px max, 16px side padding on phones, tables with inline styles.
+- Wordmark "qr daddy." and the title in Bricolage Grotesque 800 (fallback Arial Black); body in Geist (fallback system sans).
+- Primary button: cobalt face, white Geist 500 16px, 2px ink border with 6px right and bottom borders standing in for the hard shadow.
+- Always include the raw link under the button and a plain "didn't ask for this?" line.
+- Light only (`color-scheme: light`); variables are Resend's `{{{NAME}}}`.
+
 ## Changelog
 
 - **v1.2 · 2026-10-29** Account surfaces from the "QR Daddy — Account" canvas: sign-in states, Your codes (list rows, empty state, sparkline), code detail (stat row, scans-per-day chart, meters, Points to with saved state, copy chip, downloads), delete dialog / bottom sheet, toast, account menu (desktop dropdown, phone sheet with scrim). New tokens `on-danger`, `scrim`, `animate-fade-in` and the `dialog-motion` utility; shared button styles (primary, secondary, danger, text). Chart rule: only the busiest day is cobalt. The Dynamic toggle is real (Link only, no Dev badge); Dev badge left on Pricing and MoMo. Product rule written down: static codes never need an account.
@@ -300,3 +314,4 @@ animate `transform`/`opacity` (the sticker settle also animates its shadow, one 
 - **v1.1 · 2026-10-29** Dark mode (system setting) for every token, sticker and `on-accent` tokens, `ghost` replaces the placeholder hex; motion tokens and the first motion pass. PDF download, a secondary button next to SVG on desktop and in the phone step bar; phone bar primary label shortened to "PNG".
 - **v1.0 · 2026-10-28** First version, from the merge of direction A (Workbench) and B (Loud) without B's yellow.
 - **v1.3 · 2026-10-29** Content frame: page sections are capped at `max-w-page` (1280px incl. gutters) and centred, so content no longer runs to the screen edges on wide displays.
+- **v1.4 · 2026-10-29** Email section and the first template, `emails/sign-in-link.html` (Resend alias `sign-in-link`).

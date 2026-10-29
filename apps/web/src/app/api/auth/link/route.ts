@@ -1,4 +1,4 @@
-import { cancelMagicLink, magicLinkEmail, normalizeEmail, requestMagicLink } from "@qr-daddy/core";
+import { cancelMagicLink, normalizeEmail, requestMagicLink } from "@qr-daddy/core";
 import { apiError, failureResponse, handle, jsonBody } from "@/lib/server/api";
 import { cloudflareEnv } from "@/lib/server/cloudflare";
 import { isLocalRequest, linkOrigin } from "@/lib/server/origin";
@@ -6,6 +6,8 @@ import { safeNextPath } from "@/lib/safe-next";
 
 // Sent through Resend (free tier). qr.ashiangmor.com is verified there; the key is a Worker secret.
 const SENDER = "QR Daddy <signin@qr.ashiangmor.com>";
+// The published Resend template, built from emails/sign-in-link.html. It takes one variable, SIGN_IN_LINK.
+const SIGN_IN_TEMPLATE = "sign-in-link";
 
 /** Emails a sign-in link. Body: `{ email, next? }`. Answers `{ email }`, the address it went to. */
 export async function POST(request: Request) {
@@ -28,12 +30,16 @@ export async function POST(request: Request) {
 			if (!env.RESEND_API_KEY) return Response.json({ email: to });
 		}
 
-		const content = magicLinkEmail({ link });
 		const sent = env.RESEND_API_KEY
 			? await fetch("https://api.resend.com/emails", {
 					method: "POST",
 					headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-					body: JSON.stringify({ from: SENDER, to: [to], subject: content.subject, text: content.text, html: content.html }),
+					body: JSON.stringify({
+						from: SENDER,
+						to: [to],
+						subject: "Sign in to QR Daddy",
+						template: { id: SIGN_IN_TEMPLATE, variables: { SIGN_IN_LINK: link } },
+					}),
 				})
 			: null;
 		if (!sent?.ok) {

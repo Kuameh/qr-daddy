@@ -138,7 +138,7 @@
 </head>
 <body>
 <main>
-  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.3</span></h1>
+  <h1>QR Daddy design system <span style="font:500 16px var(--sans); color:var(--muted)">v1.4</span></h1>
   <p>A calm tool with a loud voice. The generator is neutral and precise; personality lives in the heavy display type, hard ink shadows on stickers and the primary action, and the codes themselves. Cobalt is the only accent. Mirrors <code>DESIGN_SYSTEM.md</code>. Designs: Brilliant project <code>qr-daddy</code>, canvases “QR Daddy — Final” and “QR Daddy — Account”.</p>
   <p><b style="color:var(--ink)">Product rule.</b> Making and downloading a static code never needs an account. Only turning on Dynamic asks for one, and it explains the benefit (change where the code points after printing, see its scans) instead of blocking. Signing in is a benefit, never a gate.</p>
 
@@ -342,7 +342,19 @@
   <h2>6. Implementation notes</h2>
   <p>No hex literals or arbitrary values in components; add a token first, with a dark value. Touch targets 44px, inputs 16px on phones. Error copy says what happened, then what to do. Route handlers answer <code>{ message, details? }</code> in plain copy and the client shows both. Chart bar heights and meter widths may be inline styles (data-driven).</p>
 
+  <h2>Email</h2>
+  <p>Templates live in <code>emails/</code> and are published in Resend (alias = file name). Email clients ignore CSS variables and Gmail drops box-shadow, so emails write the palette out inline: paper page, white card with a 1px line border, ink headings, ink-soft body, cobalt button and links. 520px max, Bricolage 800 title, Geist body.</p>
+  <div style="background:#F7F7F5;border:1px solid var(--line);border-radius:16px;padding:24px;max-width:520px">
+    <div style="font:800 20px var(--display);letter-spacing:-1px;margin-bottom:12px">qr daddy.</div>
+    <div style="background:#fff;border:1px solid #E6E6E1;border-radius:16px;padding:24px">
+      <div style="font:800 28px/1 var(--display);letter-spacing:-1px;color:#111114;margin-bottom:12px">Here's your sign-in link.</div>
+      <p style="margin:0 0 18px;color:#55555C">Tap the button, then press Continue. The link works once, for 15 minutes.</p>
+      <span style="display:inline-block;background:#2B4BFF;color:#fff;font:500 15px var(--sans);padding:12px 20px;border-radius:12px;border:2px solid #111114;border-right-width:6px;border-bottom-width:6px">Sign in to QR Daddy</span>
+    </div>
+  </div>
+
   <h2>Changelog</h2>
+  <p><b>v1.4 · 2026-10-29</b> Email section and the sign-in template (emails/sign-in-link.html, Resend alias sign-in-link).</p>
   <p><b>v1.3 · 2026-10-29</b> Content frame: page sections capped at max-w-page (1280px incl. gutters) and centred.</p>
   <p><b>v1.2 · 2026-10-29</b> Account surfaces from “QR Daddy — Account”: sign-in states, Your codes (rows, empty state, sparkline), code detail (stats, scans per day, meters, Points to, copy, downloads), delete dialog / bottom sheet, toast, account menu (dropdown and phone sheet with scrim). New tokens on-danger, scrim, animate-fade-in and the dialog-motion utility; shared primary, secondary, danger and text buttons. Only the busiest day is cobalt. Dynamic toggle is real (Link only); Dev badge left on Pricing and MoMo. Product rule: static codes never need an account.</p>
   <p><b>v1.1 · 2026-10-29</b> Dark mode for every token, sticker and on-accent tokens, ghost replaces the placeholder hex; motion tokens and the first motion pass. PDF download (secondary button next to SVG); phone step bar shows the primary as “PNG”.</p>
