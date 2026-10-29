@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCode, listCodes, magicLinkEmail, recordScan, scanSummary, type ScanInput } from "../src";
+import { createCode, listCodes, recordScan, scanSummary, type ScanInput } from "../src";
 import { DAY_MS } from "../src/deps";
 import { signIn, START, testDeps, unwrap } from "./helpers";
 
@@ -95,15 +95,5 @@ describe("scanSummary", () => {
     expect(await listCodes(deps, user.id)).toMatchObject([
       { id: code.id, totalScans: 0, dailyScans: [0, 0, 0, 0, 0, 0, 0], lastScannedAt: null },
     ]);
-  });
-});
-
-describe("magicLinkEmail", () => {
-  it("puts the link in both parts and escapes it in the HTML", () => {
-    const link = "https://qr.ashiangmor.com/auth/verify?token=abc&next=/codes";
-    const email = magicLinkEmail({ link });
-    expect(email.subject).toBe("Sign in to QR Daddy");
-    expect(email.text).toContain(link);
-    expect(email.html).toContain('href="https://qr.ashiangmor.com/auth/verify?token=abc&amp;next=/codes"');
   });
 });

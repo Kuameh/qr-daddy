@@ -45,5 +45,3 @@ export type {
 export { recordScan, scanSummary } from "./scans";
 export type { Device, ScanInput, ScanSummary } from "./scans";
 
-export { magicLinkEmail } from "./email";
-export type { EmailContent } from "./email";
